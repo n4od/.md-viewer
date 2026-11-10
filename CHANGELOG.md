@@ -7,6 +7,13 @@ the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **Per-document reading position**: reopening a long document resumes where it was
+  left. Written on the leading edge of a scroll burst (so closing the window right
+  after scrolling cannot lose it) with a trailing debounce for the resting
+  position, keyed by path and capped at 60 documents.
+
 ## [0.1.1] - 2026-11-11
 
 ### Added

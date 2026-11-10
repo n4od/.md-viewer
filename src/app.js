@@ -25,6 +25,7 @@
   var THEME_KEY = "mdviewer.theme";
   var SCALE_KEY = "mdviewer.scale";
   var RECENT_KEY = "mdviewer.recent";
+  var POSITION_KEY = "mdviewer.positions";
   var themePref = localStorage.getItem(THEME_KEY) || "auto";
   var darkQuery = window.matchMedia("(prefers-color-scheme: dark)");
 
@@ -248,10 +249,23 @@
       updateFooter(doc);
       rewriteLocalImages(doc);
 
-      if (options.preserveScroll && sameFile) {
+      if (sameFile && options.preserveScroll) {
+        // A live reload of the document already on screen: keep reading position.
         window.scrollTo({ top: previousScroll, behavior: "instant" });
-      } else {
+      } else if (sameFile) {
+        // Explicitly re-opened the same file: start at the top.
         window.scrollTo({ top: 0, behavior: "instant" });
+      } else {
+        // A different document: resume where it was left. Images may still be
+        // loading, so the browser clamps this to the height that exists yet.
+        var stored = readPositions()[doc.path];
+        var target = typeof stored === "number" ? stored : 0;
+        window.scrollTo({ top: target, behavior: "instant" });
+        if (target > 200) {
+          setTimeout(function () {
+            toast("Resumed where you left off — Home jumps to the top");
+          }, 500);
+        }
       }
       updateProgress();
       updateActiveHeading();
@@ -432,6 +446,45 @@
       $("footer-path").textContent = stamp ? path + "  ·  " + stamp : path;
     }
 
+    /* Reading position per document: a long file reopens where it was left. The
+     * map is capped so it cannot grow without bound. */
+    function readPositions() {
+      try {
+        var stored = JSON.parse(localStorage.getItem(POSITION_KEY) || "{}");
+        return stored && typeof stored === "object" ? stored : {};
+      } catch (_) { return {}; }
+    }
+
+    var positionTimer = null;
+    var positionDirty = false;
+
+    function writePosition() {
+      if (!current || !current.path) return;
+      var map = readPositions();
+      map[current.path] = Math.round(window.scrollY);
+      var keys = Object.keys(map);
+      if (keys.length > 60) {
+        keys.slice(0, keys.length - 60).forEach(function (key) { delete map[key]; });
+      }
+      try { localStorage.setItem(POSITION_KEY, JSON.stringify(map)); } catch (_) {}
+    }
+
+    /* Leading edge plus trailing debounce: the first scroll of a burst is written
+     * straight away (so closing the window right after scrolling cannot lose it),
+     * and the resting position is written when the burst stops. */
+    function schedulePositionSave() {
+      if (!current || !current.path) return;
+      if (!positionDirty) {
+        positionDirty = true;
+        writePosition();
+      }
+      clearTimeout(positionTimer);
+      positionTimer = setTimeout(function () {
+        writePosition();
+        positionDirty = false;
+      }, 400);
+    }
+
     /* ---------- scroll: progress bar + active heading ---------- */
 
     var scrollQueued = false;
@@ -442,6 +495,7 @@
         scrollQueued = false;
         updateProgress();
         updateActiveHeading();
+        schedulePositionSave();
       });
     }
 

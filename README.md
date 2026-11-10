@@ -299,6 +299,9 @@ Extras implemented in plain JS:
 * **Reading size** (`Ctrl` + `+` / `-` / `0`) scales the article through the
   `--reading-scale` custom property.
 * **Recent files** list on the empty state, kept in `localStorage`.
+* **Reading position** remembered per document, so a long file reopens where you
+  stopped. The first scroll of a burst is written immediately and the resting
+  position follows after a short debounce; the map is capped at 60 documents.
 * **Drag & drop**: Rust emits `md://drag`, the frontend only paints the overlay.
 * **Scroll**: `J` / `K` page-scroll, smooth scrolling, `scroll-margin-top` so
   headings never hide under the sticky top bar, and `prefers-reduced-motion`

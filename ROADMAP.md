@@ -63,8 +63,10 @@ Small, verifiable, and mostly finishing what 0.1.0 started.
       action.
 - [ ] **Print/PDF polish**: verify page breaks for code blocks and tables, and
       hide the outline/find chrome reliably (print styles exist; untested on paper).
-- [ ] **Per-document reading position**, so reopening a long file returns to
-      where you stopped.
+- [x] **Per-document reading position**, so reopening a long file returns to
+      where you stopped. Written on the leading edge of a scroll burst (so closing
+      the window right after scrolling cannot lose it) and refreshed when the burst
+      settles; capped at 60 documents.
 - [ ] **Progressive rendering** for documents over ~1 MB: paint the first chunk
       and continue, instead of one long `push_html` call.
 - [ ] **Image placeholders**: reserve space from image dimensions where available
