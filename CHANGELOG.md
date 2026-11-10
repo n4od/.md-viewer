@@ -15,6 +15,12 @@ the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **Recent-list housekeeping**: entries whose file no longer exists are dropped on
   start-up, and the list has a **Clear** action. Backed by a new `filter_existing`
   command, so the check happens in Rust rather than trusting the webview.
+- **Command line flags**: `--version` (`-V`), `--help` (`-h`) and
+  `--register-default`. The last writes the per-user association keys for the
+  running executable and refreshes the shell without opening a window, which is
+  what scripted installs (a Windows Sandbox `.wsb` logon command, a CI smoke test)
+  need. The binary re-attaches to the parent console, so the output appears when it
+  is run from a terminal even though it ships as a windowed app.
 
 ### Changed
 

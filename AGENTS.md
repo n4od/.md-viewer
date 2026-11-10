@@ -20,7 +20,7 @@ backend is one Rust file. Windows is the only exercised target.
 | Purpose | Command |
 | :-- | :-- |
 | Fast compile gate | `cargo check --manifest-path src-tauri/Cargo.toml` |
-| All tests | `cargo test --manifest-path src-tauri/Cargo.toml` (20 pass, 1 ignored) |
+| All tests | `cargo test --manifest-path src-tauri/Cargo.toml` (23 pass, 1 ignored) |
 | One test | `cargo test --manifest-path src-tauri/Cargo.toml open_command -- --nocapture` |
 | UI iteration | `node scripts/dev-server.js` → <http://localhost:8123/preview/harness.html> |
 | Desktop layout | <http://localhost:8123/preview/wide.html> (1280×900 iframe) |
@@ -105,6 +105,10 @@ backend is one Rust file. Windows is the only exercised target.
 - Build with `npm install` then `npx.cmd tauri build` (or `npm run bundle`);
   output is `src-tauri/target/release/bundle/nsis/*-setup.exe`. Silent flags:
   `/S`. `currentUser` install dir: `%LOCALAPPDATA%\MD Viewer`.
+- For scripted or headless registration call `mdviewer.exe --register-default`
+  (writes the per-user keys for the running executable, exit 0/1, no UI). It is
+  what a `.wsb` logon command or a CI smoke test should use instead of the
+  PowerShell script.
 - **Testing the installer mutates shared state.** It overwrites the
   `MDViewer.Markdown` keys the portable build depends on, and the uninstall hook
   deletes `%LOCALAPPDATA%\mdviewer` (theme + recent files). Export the

@@ -39,7 +39,11 @@ percent-encoding = "2.3.2"
 # `windows` matches the version tauri-runtime-wry uses so `hwnd()` interops.
 [target.'cfg(windows)'.dependencies]
 winreg = "0.56.0"
-windows = { version = "0.62.2", features = ["Win32_Foundation", "Win32_UI_Shell"] }
+windows = { version = "0.62.2", features = [
+    "Win32_Foundation",
+    "Win32_UI_Shell",
+    "Win32_System_Console",
+] }
 
 [profile.release]
 # Small, fast, no debug info. Keeps the binary around 4.4 MB on Windows.

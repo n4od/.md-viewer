@@ -343,6 +343,28 @@ cargo build --release
 Register the association against that exe (see step 4) or copy just the `.exe`
 anywhere you like — it is self-contained apart from the WebView2 runtime.
 
+### Command line flags
+
+The binary is a GUI-subsystem app (no console window), so it re-attaches to the
+parent console when there is one and prints there:
+
+| Invocation | Effect | Exit |
+| :-- | :-- | --: |
+| *(nothing)* | Window, empty state | 0 |
+| `mdviewer FILE.md` | Window, that document | 0 |
+| `mdviewer --register-default` | Writes the per-user association keys for *this* executable and refreshes the shell; no window, no dialog | 0 / 1 |
+| `mdviewer --version` (`-V`) | Prints `mdviewer <version>` | 0 |
+| `mdviewer --help` (`-h`) | Prints usage | 0 |
+
+```powershell
+# scripted install: a Windows Sandbox .wsb logon command, or a CI smoke test
+& "$env:LOCALAPPDATA\MD Viewer\mdviewer.exe" --register-default
+if ($LASTEXITCODE -ne 0) { throw 'association registration failed' }
+```
+
+`--register-default` makes MD Viewer a *candidate* handler — Windows still keeps
+the final default choice, so the user confirms once (step 5).
+
 ### Step 3 — Package an installer with the association
 
 ```powershell
@@ -488,7 +510,8 @@ caveats that always apply to a fresh Windows instance:
 | Find | `Ctrl+F`, type `markdown` → highlights and `n/N` counter; Enter jumps, Esc closes. |
 | Outline | `Ctrl+B` opens the drawer, the current section is highlighted while scrolling. |
 | Empty/error states | Open a file, then rename it on disk and press `F5` → an inline error, the app stays usable. |
-| Tests | `cd src-tauri; cargo test` → 20 tests over argument parsing, decoding, rendering, sanitising, alignment, recent-file filtering, installer/config consistency and render speed, plus one opt-in registry test. |
+| Command line | `src-tauri\target\release\mdviewer.exe --version` prints `mdviewer 0.1.0`; `--register-default` exits 0 and points the `MDViewer.Markdown` ProgId at that executable. |
+| Tests | `cd src-tauri; cargo test` → 23 tests over argument parsing and CLI flags, decoding, rendering, sanitising, alignment, recent-file filtering, installer/config consistency and render speed, plus one opt-in registry test. |
 
 ### Troubleshooting
 
@@ -511,7 +534,7 @@ Reproduce everything below with:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts\measure.ps1      # time + memory
-cargo test --manifest-path src-tauri\Cargo.toml                   # 20 tests, 1 ignored
+cargo test --manifest-path src-tauri\Cargo.toml                   # 23 tests, 1 ignored
 cargo test --release rendering_a_large_document_stays_fast -- --nocapture
 ```
 

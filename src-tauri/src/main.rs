@@ -1029,11 +1029,82 @@ struct DragState {
     active: bool,
 }
 
-fn run() {
-    // Capture the path Explorer handed us before any window exists, so the
-    // very first paint already shows the document.
-    let startup_path = parse_cli_path(&std::env::args().collect::<Vec<_>>());
+/// What the command line asked for. Flags win over file arguments; `--` ends
+/// flag parsing, so `mdviewer -- --version` still tries to open a file called
+/// `--version`.
+#[derive(Debug, PartialEq)]
+enum StartupAction {
+    /// Launch the window, optionally with a document.
+    Gui(Option<PathBuf>),
+    /// `--version`
+    Version,
+    /// `--help`
+    Help,
+    /// `--register-default`: write the per-user association keys and exit.
+    RegisterDefault,
+}
 
+fn classify_args(args: &[String]) -> StartupAction {
+    for raw in args.iter().skip(1) {
+        let arg = raw.trim().trim_matches('"');
+        if arg == "--" {
+            break;
+        }
+        match arg.to_ascii_lowercase().as_str() {
+            "--version" | "-v" => return StartupAction::Version,
+            "--help" | "-h" => return StartupAction::Help,
+            "--register-default" | "--register" => return StartupAction::RegisterDefault,
+            _ => {}
+        }
+    }
+    StartupAction::Gui(parse_cli_path(args))
+}
+
+const USAGE: &str = "\
+MD Viewer {version} - a fast, minimal Markdown viewer
+
+Usage:
+  mdviewer [FILE.md]             open a document
+  mdviewer --register-default    register this executable as a .md handler
+  mdviewer --version             print the version and exit
+  mdviewer --help                print this text and exit
+
+--register-default writes the per-user registry keys and refreshes the shell, so
+it is what a scripted install (a .wsb logon command, for instance) should call.
+Windows still asks the user once before .md opens with MD Viewer by default.
+";
+
+/// Release builds have no console, so a flag typed in a terminal would be silent.
+/// Attach to the parent console when there is one, and write through the handle
+/// directly: the standard streams were bound before the attach happened.
+#[cfg(windows)]
+fn print_to_console(text: &str) {
+    use std::io::Write;
+    use std::os::windows::io::FromRawHandle;
+    use windows::Win32::System::Console::{
+        AttachConsole, GetStdHandle, ATTACH_PARENT_PROCESS, STD_OUTPUT_HANDLE,
+    };
+
+    unsafe {
+        let _ = AttachConsole(ATTACH_PARENT_PROCESS);
+        if let Ok(handle) = GetStdHandle(STD_OUTPUT_HANDLE) {
+            if !handle.is_invalid() {
+                let mut out = std::fs::File::from_raw_handle(handle.0);
+                let _ = out.write_all(text.as_bytes());
+                let _ = out.flush();
+                std::mem::forget(out); // the handle is shared; never close it here
+            }
+        }
+    }
+}
+
+#[cfg(not(windows))]
+fn print_to_console(text: &str) {
+    use std::io::Write;
+    let _ = std::io::stdout().write_all(text.as_bytes());
+}
+
+fn run(startup_path: Option<PathBuf>) {
     tauri::Builder::default()
         // The single-instance plugin must be registered before anything else.
         .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
@@ -1118,7 +1189,34 @@ fn run() {
 }
 
 fn main() {
-    run();
+    let args: Vec<String> = std::env::args().collect();
+
+    match classify_args(&args) {
+        StartupAction::Version => {
+            print_to_console(&format!("mdviewer {}\n", env!("CARGO_PKG_VERSION")));
+        }
+        StartupAction::Help => {
+            print_to_console(&USAGE.replace("{version}", env!("CARGO_PKG_VERSION")));
+        }
+        StartupAction::RegisterDefault => {
+            match current_program().and_then(|exe| shell_default::register(&exe).map(|_| exe)) {
+                Ok(exe) => {
+                    shell_default::notify_shell();
+                    print_to_console(&format!(
+                        "Registered {} as a handler for .md and friends.\n\
+                         Windows still needs one confirmation: right-click a .md file, \
+                         Open with, choose MD Viewer, then Always.\n",
+                        exe.display()
+                    ));
+                }
+                Err(error) => {
+                    print_to_console(&format!("Could not register: {error}\n"));
+                    std::process::exit(1);
+                }
+            }
+        }
+        StartupAction::Gui(path) => run(path),
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -1174,6 +1272,44 @@ mod tests {
     fn cli_returns_none_without_arguments() {
         assert_eq!(parse_cli_path(&["mdviewer.exe".to_string()]), None);
         assert_eq!(parse_cli_path(&[]), None);
+    }
+
+    fn args_of(list: &[&str]) -> Vec<String> {
+        list.iter().map(|item| item.to_string()).collect()
+    }
+
+    #[test]
+    fn cli_flags_are_recognised() {
+        assert_eq!(classify_args(&args_of(&["mdviewer.exe", "--version"])), StartupAction::Version);
+        assert_eq!(classify_args(&args_of(&["mdviewer.exe", "-V"])), StartupAction::Version);
+        assert_eq!(classify_args(&args_of(&["mdviewer.exe", "--help"])), StartupAction::Help);
+        assert_eq!(classify_args(&args_of(&["mdviewer.exe", "-h"])), StartupAction::Help);
+        assert_eq!(
+            classify_args(&args_of(&["mdviewer.exe", "--register-default"])),
+            StartupAction::RegisterDefault
+        );
+        assert_eq!(classify_args(&args_of(&["mdviewer.exe"])), StartupAction::Gui(None));
+    }
+
+    #[test]
+    fn cli_flags_do_not_shadow_a_document() {
+        let file = temp_file("flags-doc.md", b"# hi");
+        let path = file.display().to_string();
+        assert_eq!(
+            classify_args(&args_of(&["mdviewer.exe", &path])),
+            StartupAction::Gui(Some(file.clone()))
+        );
+        let _ = std::fs::remove_file(file);
+    }
+
+    #[test]
+    fn double_dash_ends_flag_parsing() {
+        // After `--`, a flag-looking argument is a path, not a flag. No such file
+        // exists here, so the result is "GUI, no document".
+        assert_eq!(
+            classify_args(&args_of(&["mdviewer.exe", "--", "--version"])),
+            StartupAction::Gui(None)
+        );
     }
 
     #[test]
@@ -1317,8 +1453,7 @@ footnote[^1]
     }
 
     #[test]
-    fn filter_existing_keeps_only_real_files() {
-        let real = temp_file("filter-existing.md", b"# hi");
+    fn filter_existing_keeps_only_real_files() {        let real = temp_file("filter-existing.md", b"# hi");
         let missing = std::env::temp_dir().join("mdviewer-definitely-missing-77.md");
         let kept = filter_existing(vec![
             real.display().to_string(),

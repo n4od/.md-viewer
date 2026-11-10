@@ -42,9 +42,9 @@ Small, verifiable, and mostly finishing what 0.1.0 started.
       would need a reverse-DNS identifier of its own — see the macOS item below.
 - [ ] **Session continuity.** With no file argument, offer to reopen the last
       document (opt-in, stored alongside the recent files).
-- [ ] **CLI flags**: `--version` and `--register-default` for scripted installs
-      and Sandbox `.wsb` logon commands, with meaningful exit codes (the release
-      binary has no console, so don't print to stdout).
+- [x] **CLI flags**: `--version`, `--help` and `--register-default` for scripted
+      installs (`.wsb` logon commands, CI smoke tests), with exit codes and console
+      output on demand; Windows still keeps the final default-app choice.
 - [x] **Keep the last good render.** A failed reload keeps the article on screen
       and shows a notice naming the file, with a **Retry** action, instead of
       blanking the reading pane.
