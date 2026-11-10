@@ -18,6 +18,10 @@ the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   left. Written on the leading edge of a scroll burst (so closing the window right
   after scrolling cannot lose it) with a trailing debounce for the resting
   position, keyed by path and capped at 60 documents.
+- **Find upgrades**: match-case and whole-word toggles in the find bar (also
+  Alt+C / Alt+W), persisted across sessions. The counter now reports every
+  occurrence; only the first 1500 are turned into highlight ranges, so a document
+  with thousands of hits stays responsive while the count remains truthful.
 
 ## [0.1.1] - 2026-11-11
 

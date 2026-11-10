@@ -648,8 +648,33 @@
       var bar = $("findbar");
       var ranges = [];
       var index = -1;
+      var total = 0;
+      var HIGHLIGHT_CAP = 1500;
+      var options = readOptions();
       var supported = typeof window.Highlight === "function" &&
         !!(window.CSS && CSS.highlights);
+
+      function readOptions() {
+        try {
+          var raw = JSON.parse(localStorage.getItem("mdviewer.find") || "{}");
+          return { caseSensitive: !!raw.caseSensitive, wholeWord: !!raw.wholeWord };
+        } catch (_) { return { caseSensitive: false, wholeWord: false }; }
+      }
+
+      function saveOptions() {
+        try { localStorage.setItem("mdviewer.find", JSON.stringify(options)); } catch (_) {}
+      }
+
+      function escapeRegExp(text) {
+        return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      }
+
+      function buildMatcher(term) {
+        var flags = options.caseSensitive ? "g" : "gi";
+        var pattern = escapeRegExp(term);
+        if (options.wholeWord) pattern = "\\b" + pattern + "\\b";
+        return new RegExp(pattern, flags);
+      }
       var matchHighlight = supported ? new Highlight() : null;
       var currentHighlight = supported ? new Highlight() : null;
 
@@ -661,14 +686,22 @@
       function clear() {
         ranges = [];
         index = -1;
+        total = 0;
         if (supported) { matchHighlight.clear(); currentHighlight.clear(); }
         count.textContent = "0/0";
+        count.title = "";
       }
 
+      /* Counts every match but only builds Range objects for the first
+       * HIGHLIGHT_CAP, so a pathological document cannot freeze the UI while the
+       * counter still tells the truth. */
       function collect(term) {
         clear();
         if (!term || term.length < 2 || docEl.hidden) return;
-        var needle = term.toLowerCase();
+
+        var matcher;
+        try { matcher = buildMatcher(term); } catch (_) { return; }
+
         var walker = document.createTreeWalker(docEl, NodeFilter.SHOW_TEXT, {
           acceptNode: function (node) {
             if (!node.nodeValue || !node.nodeValue.trim()) return NodeFilter.FILTER_REJECT;
@@ -678,22 +711,26 @@
           }
         });
         var node;
-        var limit = 1200;
-        while ((node = walker.nextNode()) && ranges.length < limit) {
-          var text = node.nodeValue.toLowerCase();
-          var from = 0;
-          while (ranges.length < limit) {
-            var at = text.indexOf(needle, from);
-            if (at === -1) break;
-            var range = document.createRange();
-            range.setStart(node, at);
-            range.setEnd(node, at + needle.length);
-            ranges.push(range);
-            from = at + needle.length;
+        while ((node = walker.nextNode())) {
+          var text = node.nodeValue;
+          var match;
+          matcher.lastIndex = 0;
+          while ((match = matcher.exec(text))) {
+            total += 1;
+            if (ranges.length < HIGHLIGHT_CAP) {
+              var range = document.createRange();
+              range.setStart(node, match.index);
+              range.setEnd(node, match.index + match[0].length);
+              ranges.push(range);
+            }
+            if (match[0].length === 0) matcher.lastIndex += 1; // zero-width safety
           }
         }
         if (supported) ranges.forEach(function (range) { matchHighlight.add(range); });
-        count.textContent = ranges.length ? "1/" + ranges.length : "0/0";
+        if (total > ranges.length) {
+          count.title = "Highlighting the first " + ranges.length + " of " + total + " matches";
+        }
+        count.textContent = total ? "1/" + total : "0/0";
         if (ranges.length) go(0);
       }
 
@@ -705,7 +742,7 @@
           currentHighlight.clear();
           currentHighlight.add(range);
         }
-        count.textContent = (index + 1) + "/" + ranges.length;
+        count.textContent = (index + 1) + "/" + total;
         var rect = range.getBoundingClientRect();
         var target = rect.top + window.scrollY - window.innerHeight / 2;
         window.scrollTo({ top: target, behavior: "smooth" });
@@ -733,12 +770,57 @@
 
       var debounce = null;
       var lastFocus = null;
+
+      var caseBtn = $("find-case");
+      var wordBtn = $("find-word");
+
+      function syncToggles() {
+        caseBtn.setAttribute("aria-pressed", String(options.caseSensitive));
+        wordBtn.setAttribute("aria-pressed", String(options.wholeWord));
+        caseBtn.title = "Match case (Alt+C)";
+        wordBtn.title = "Whole word (Alt+W)";
+      }
+
+      function rerun() {
+        if (input.value.trim()) collect(input.value.trim());
+      }
+
+      function toggleCase() {
+        options.caseSensitive = !options.caseSensitive;
+        saveOptions();
+        syncToggles();
+        rerun();
+        input.focus();
+      }
+
+      function toggleWord() {
+        options.wholeWord = !options.wholeWord;
+        saveOptions();
+        syncToggles();
+        rerun();
+        input.focus();
+      }
+
+      caseBtn.addEventListener("click", toggleCase);
+      wordBtn.addEventListener("click", toggleWord);
+      syncToggles();
+
       input.addEventListener("input", function () {
         clearTimeout(debounce);
         debounce = setTimeout(function () { collect(input.value.trim()); }, 140);
       });
 
       input.addEventListener("keydown", function (event) {
+        if (event.altKey && (event.key === "c" || event.key === "C")) {
+          event.preventDefault();
+          toggleCase();
+          return;
+        }
+        if (event.altKey && (event.key === "w" || event.key === "W")) {
+          event.preventDefault();
+          toggleWord();
+          return;
+        }
         if (event.key === "Enter") {
           event.preventDefault();
           if (!ranges.length) collect(input.value.trim());

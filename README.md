@@ -295,7 +295,9 @@ Extras implemented in plain JS:
   cycled with `Ctrl+Shift+L` between *system → light → dark* and re-resolved when
   the OS flips (the CSS uses explicit `[data-theme]` token blocks, no duplication).
 * **Find** (`Ctrl+F`, Enter/Shift+Enter, Esc) built on the CSS Custom Highlight
-  API: matches are highlighted without mutating the DOM.
+  API: matches are highlighted without mutating the DOM. Match-case and whole-word
+  toggles (`Alt+C` / `Alt+W`) persist, and the counter stays accurate past the
+  1500-highlight cap.
 * **Reading size** (`Ctrl` + `+` / `-` / `0`) scales the article through the
   `--reading-scale` custom property.
 * **Recent files** list on the empty state, kept in `localStorage`.

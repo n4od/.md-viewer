@@ -1231,6 +1231,22 @@ kbd {
   text-align: right;
 }
 
+/* Case / whole-word toggles sit inside the find bar. */
+.findbar .toggle {
+  width: auto;
+  min-width: 26px;
+  padding: 0 5px;
+  font: 600 0.72rem/1 var(--font-ui);
+  letter-spacing: 0;
+  color: var(--text-faint);
+}
+
+.findbar .toggle[aria-pressed="true"] {
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-color: color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
 ::highlight(find-match) {
   background: color-mix(in srgb, var(--accent) 28%, transparent);
 }

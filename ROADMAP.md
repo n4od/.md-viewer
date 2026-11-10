@@ -56,8 +56,9 @@ Small, verifiable, and mostly finishing what 0.1.0 started.
 
 ## Next — 0.3
 
-- [ ] **Find upgrades**: whole-word and case-sensitivity toggles, and a match
-      count that stays accurate for very long documents.
+- [x] **Find upgrades**: match-case and whole-word toggles (buttons, plus Alt+C /
+      Alt+W), remembered across sessions, and a count that reports every occurrence
+      even when only the first 1500 are highlighted.
 - [ ] **Heading anchors**: hover link plus "copy link to section", next to the
       outline.
 - [x] **Recent files housekeeping**: entries whose file no longer exists are
