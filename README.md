@@ -302,6 +302,9 @@ Extras implemented in plain JS:
 * **Reading position** remembered per document, so a long file reopens where you
   stopped. The first scroll of a burst is written immediately and the resting
   position follows after a short debounce; the map is capped at 60 documents.
+* **Accessibility**: skip-to-content link, focus moved into and out of the outline
+  and find bar, labelled icon buttons, `aria-expanded`/`aria-current` where they
+  apply, and WCAG AA contrast for muted text in both themes.
 * **Drag & drop**: Rust emits `md://drag`, the frontend only paints the overlay.
 * **Scroll**: `J` / `K` page-scroll, smooth scrolling, `scroll-margin-top` so
   headings never hide under the sticky top bar, and `prefers-reduced-motion`

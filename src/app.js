@@ -115,6 +115,7 @@
 
   function boot() {
     var docEl = $("doc");
+    var skipLink = $("skip-link");
     var welcome = $("welcome");
     var errorCard = $("error");
     var welcomeError = $("welcome-error");
@@ -191,6 +192,7 @@
       docEl.hidden = true;
       footer.hidden = true;
       errorCard.hidden = true;
+      skipLink.hidden = true;
       setActiveHeadings([]);
       closeToc();
       document.title = "MD Viewer";
@@ -241,6 +243,7 @@
       errorCard.hidden = true;
       docEl.hidden = false;
       footer.hidden = false;
+      skipLink.hidden = false;
 
       docEl.innerHTML = doc.html || "";
       headings = enhance(docEl);
@@ -526,6 +529,9 @@
       tocList.querySelectorAll("a").forEach(function (a) {
         var on = ids.indexOf(a.getAttribute("href").slice(1)) !== -1;
         a.classList.toggle("active", on);
+        // Screen readers get the same "you are here" signal as the highlight.
+        if (on) a.setAttribute("aria-current", "location");
+        else a.removeAttribute("aria-current");
       });
     }
 
@@ -534,22 +540,33 @@
 
     /* ---------- contents drawer ---------- */
 
+    var tocOpen = false;
     function openToc() {
+      if (tocOpen) return;
+      tocOpen = true;
       toc.hidden = false;
       tocScrim.hidden = false;
       requestAnimationFrame(function () { toc.classList.add("open"); });
-      $("btn-toc").setAttribute("aria-pressed", "true");
+      $("btn-toc").setAttribute("aria-expanded", "true");
+      // Move focus into the panel so it is reachable by keyboard, and so Escape
+      // has somewhere to come back from.
+      var close = $("toc-close");
+      if (close) close.focus();
     }
 
     function closeToc() {
+      if (!tocOpen) return;
+      tocOpen = false;
       toc.classList.remove("open");
       tocScrim.hidden = true;
-      $("btn-toc").setAttribute("aria-pressed", "false");
-      setTimeout(function () { if (!toc.classList.contains("open")) toc.hidden = true; }, 240);
+      $("btn-toc").setAttribute("aria-expanded", "false");
+      setTimeout(function () { if (!tocOpen) toc.hidden = true; }, 240);
+      var inside = toc.contains(document.activeElement);
+      if (inside || document.activeElement === document.body) $("btn-toc").focus();
     }
 
     function toggleToc() {
-      if (toc.classList.contains("open")) closeToc(); else if (current) openToc();
+      if (tocOpen) closeToc(); else if (current) openToc();
     }
 
     /* ---------- opening documents ---------- */
@@ -695,6 +712,7 @@
       }
 
       function open() {
+        if (bar.hidden) lastFocus = document.activeElement;
         bar.hidden = false;
         input.focus();
         input.select();
@@ -704,10 +722,17 @@
       function close() {
         bar.hidden = true;
         clear();
-        if (current) docEl.focus();
+        // Give focus back to whatever had it (usually the article or a button).
+        if (lastFocus && document.contains(lastFocus) && typeof lastFocus.focus === "function") {
+          lastFocus.focus();
+        } else {
+          docEl.focus();
+        }
+        lastFocus = null;
       }
 
       var debounce = null;
+      var lastFocus = null;
       input.addEventListener("input", function () {
         clearTimeout(debounce);
         debounce = setTimeout(function () { collect(input.value.trim()); }, 140);
@@ -750,6 +775,7 @@
       localStorage.setItem(THEME_KEY, themePref);
       applyTheme();
       $("btn-theme").title = "Theme: " + themeLabels[themePref] + " (Ctrl+Shift+L)";
+      $("btn-theme").setAttribute("aria-label", "Theme: " + themeLabels[themePref] + " (click to change)");
       toast("Theme: " + themeLabels[themePref]);
     }
 
@@ -757,10 +783,12 @@
 
     document.addEventListener("keydown", function (event) {
       var mod = event.ctrlKey || event.metaKey;
+      var target = event.target;
+      var typing = !!target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable);
 
       if (event.key === "Escape") {
         if (find.isOpen()) { find.close(); return; }
-        if (toc.classList.contains("open")) { closeToc(); return; }
+        if (tocOpen) { closeToc(); return; }
       }
       if (event.key === "F5" || (mod && !event.shiftKey && event.key.toLowerCase() === "r")) {
         event.preventDefault();
@@ -794,6 +822,8 @@
         return;
       }
       if (!mod) {
+        // Never hijack plain letters while the user is typing (the find field).
+        if (typing) return;
         var key = event.key.toLowerCase();
         if (key === "j" || key === "k") {
           event.preventDefault();
@@ -868,6 +898,12 @@
     tocScrim.addEventListener("click", closeToc);
     $("btn-theme").addEventListener("click", cycleTheme);
     $("btn-theme").title = "Theme: " + themeLabels[themePref] + " (Ctrl+Shift+L)";
+    $("btn-theme").setAttribute("aria-label", "Theme: " + themeLabels[themePref] + " (click to change)");
+    $("skip-link").addEventListener("click", function (event) {
+      event.preventDefault();
+      docEl.focus();
+      docEl.scrollIntoView({ block: "start", behavior: "smooth" });
+    });
 
     function setDragOverlay(active) {
       if (active) { dropzone.hidden = false; } else { dropzone.hidden = true; }

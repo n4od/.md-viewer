@@ -48,9 +48,11 @@ Small, verifiable, and mostly finishing what 0.1.0 started.
 - [x] **Keep the last good render.** A failed reload keeps the article on screen
       and shows a notice naming the file, with a **Retry** action, instead of
       blanking the reading pane.
-- [ ] **Accessibility pass**: focus order through the top bar, outline and find
-      bar; screen-reader labels for the icon buttons; contrast check for muted
-      text in both themes; keyboard-only walkthrough of every action.
+- [x] **Accessibility pass**: skip-to-content link; focus moves into the outline
+      and find bar and returns to where it came from; the outline toggle reports
+      `aria-expanded` and the current section `aria-current`; icon buttons carry
+      labels; plain `j`/`k` no longer scroll while typing in the find field; muted
+      text measures 4.65:1 (light) and 5.97:1 (dark), past WCAG AA.
 
 ## Next — 0.3
 

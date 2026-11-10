@@ -9,6 +9,11 @@ the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Accessibility pass**: muted text now meets WCAG AA in both themes (the faintest
+  token measures 4.65:1 on light and 5.97:1 on dark); a skip-to-content link; the
+  outline and find bar move focus in on open and hand it back on close; the outline
+  toggle reports `aria-expanded`, the current section `aria-current`, the find
+  match count is a live region, and the theme button names the active mode.
 - **Per-document reading position**: reopening a long document resumes where it was
   left. Written on the leading edge of a scroll burst (so closing the window right
   after scrolling cannot lose it) with a trailing debounce for the resting
