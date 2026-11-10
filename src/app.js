@@ -536,7 +536,6 @@
         return;
       }
       event.preventDefault();
-      var external = /^(https?:|mailto:)/i.test(href);
       try {
         var result = await invoke("open_link", { href: href });
         if (!result) return;

@@ -306,16 +306,27 @@ fn markdown_options() -> Options {
         | Options::ENABLE_PLUSES_DELIMITED_METADATA_BLOCKS
 }
 
+/// pulldown-cmark marks aligned table cells with an inline `style`. The app's
+/// CSP is `style-src 'self'`, so inline style attributes never render; convert
+/// the three possible values into classes *before* sanitising, which also lets
+/// the allow-list drop `style` entirely.
+fn alignment_to_classes(html: String) -> String {
+    html.replace(" style=\"text-align: left\"", " class=\"align-left\"")
+        .replace(" style=\"text-align: center\"", " class=\"align-center\"")
+        .replace(" style=\"text-align: right\"", " class=\"align-right\"")
+        .replace(" style=\"text-align:left\"", " class=\"align-left\"")
+        .replace(" style=\"text-align:center\"", " class=\"align-center\"")
+        .replace(" style=\"text-align:right\"", " class=\"align-right\"")
+}
+
 /// Raw HTML inside Markdown is a real XSS vector: this webview can call our IPC
 /// commands. The document is parsed to HTML, then cleaned with an allow-list.
 fn sanitize(dirty: &str) -> String {
-    use std::collections::HashSet;
-
     let mut builder = ammonia::Builder::default();
 
     // `id` keeps heading and footnote anchors working, `class` keeps the
-    // renderer's semantics (alerts, code languages, task lists).
-    builder.add_generic_attributes(["id", "class", "style"]);
+    // renderer's semantics (alerts, code languages, task lists, alignment).
+    builder.add_generic_attributes(["id", "class"]);
 
     // Extra elements that Markdown authors reasonably expect. No <script>,
     // <iframe>, <svg> or <form>: ammonia's defaults plus this list.
@@ -341,10 +352,6 @@ fn sanitize(dirty: &str) -> String {
     );
     builder.add_tag_attributes("audio", ["src", "controls", "loop", "muted", "preload"]);
     builder.add_tag_attributes("time", ["datetime"]);
-
-    // pulldown-cmark marks table alignment with style="text-align: ...".
-    // Keep that one property and drop every other inline style.
-    builder.filter_style_properties(HashSet::from(["text-align"]));
     builder.link_rel(Some("noopener noreferrer"));
 
     // Note: only the schemes ammonia allows by default (http/https/mailto/...)
@@ -357,7 +364,7 @@ fn render_markdown(source: &str) -> String {
     let parser = Parser::new_ext(source, markdown_options());
     let mut rendered = String::with_capacity(source.len() + source.len() / 2 + 64);
     html::push_html(&mut rendered, parser);
-    sanitize(&rendered)
+    sanitize(&alignment_to_classes(rendered))
 }
 
 // ---------------------------------------------------------------------------
@@ -1238,12 +1245,19 @@ footnote[^1]
     }
 
     #[test]
-    fn table_alignment_style_survives_while_others_are_dropped() {
+    fn table_alignment_is_emitted_as_classes() {
         let html = render_markdown("| a | b |\n| :- | -: |\n| 1 | 2 |\n");
-        // ammonia's style filter rewrites the declaration without the space.
-        assert!(html.contains("text-align:left"), "alignment kept: {html}");
-        assert!(html.contains("text-align:right"), "alignment kept: {html}");
-        assert!(!html.contains("color:"), "unexpected style: {html}");
+        // Inline styles are blocked by the app's CSP, so alignment is a class.
+        assert!(html.contains("class=\"align-left\""), "left alignment: {html}");
+        assert!(html.contains("class=\"align-right\""), "right alignment: {html}");
+        assert!(!html.contains("style="), "no inline styles may survive: {html}");
+    }
+
+    #[test]
+    fn inline_styles_from_raw_html_are_dropped() {
+        let html = render_markdown("<div style=\"color:red;text-align:center\">x</div>");
+        assert!(!html.contains("style="), "style attribute leaked: {html}");
+        assert!(!html.contains("color:red"), "style value leaked: {html}");
     }
 
     #[test]
@@ -1288,6 +1302,31 @@ footnote[^1]
         assert!(CLAIM_EXTENSIONS.iter().all(|ext| is_markdown(Path::new(&format!("file.{ext}")))));
         // A viewer should not claim plain text as its own type.
         assert!(!CLAIM_EXTENSIONS.contains(&"txt"));
+    }
+
+    #[test]
+    fn installer_progid_matches_the_runtime_registration() {
+        // Tauri's NSIS template uses fileAssociations[].name as the ProgId. If
+        // that drifts from PROG_ID, the installer and the in-app action register
+        // different keys and the "Open with" list shows the app twice.
+        let config = include_str!("../tauri.conf.json");
+        assert!(
+            config.contains(format!("\"name\": \"{PROG_ID}\"").as_str()),
+            "tauri.conf.json fileAssociations[].name must be {PROG_ID}"
+        );
+        for ext in CLAIM_EXTENSIONS {
+            assert!(
+                config.contains(format!("\"{ext}\"").as_str()),
+                "extension {ext} is missing from tauri.conf.json"
+            );
+        }
+        assert!(
+            config.contains("\"installerHooks\": \"./windows/hooks.nsh\""),
+            "the NSIS hooks that write Applications\\<exe> are not wired up"
+        );
+
+        let hooks = Path::new(env!("CARGO_MANIFEST_DIR")).join("windows/hooks.nsh");
+        assert!(hooks.is_file(), "missing {}", hooks.display());
     }
 
     /// Guard rail for the "instant" claim: parse + sanitise a document far

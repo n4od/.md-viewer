@@ -7,6 +7,39 @@ the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- NSIS installer hooks (`src-tauri/windows/hooks.nsh`, wired through
+  `nsis.installerHooks`) that write the `Applications\<exe>` entries
+  (`FriendlyAppName`, icon, command, `SupportedTypes`) and the per-extension
+  `OpenWithProgids` candidates Tauri's template omits.
+
+### Changed
+
+- Performance figures in the README now point at `PERFORMANCE.md` instead of
+  copying one run's numbers, which drift between runs.
+- `fileAssociations[].name` is now the runtime ProgId (`MDViewer.Markdown` /
+  `MDViewer.Text`); a test keeps the config and `PROG_ID` pinned together.
+- The installer path is verified end to end: silent install, one ProgId pointing
+  at the installed executable, one named "Open with" entry, double-click launch,
+  and an uninstall with no registry, install-directory or app-data residue. The
+  WebView2 download-bootstrapper path stays untested (no machine without the
+  runtime).
+
+### Fixed
+
+- Table column alignment relied on an inline `style="text-align: …"`, which the
+  app's own CSP (`style-src 'self'`) blocks. Alignment is emitted as
+  `align-left|center|right` classes before sanitising, so it renders in the app
+  and every inline style is now rejected outright.
+- The installer derived its ProgId from the association *display* name
+  (`"Markdown Document"`), so a machine that also had the per-user registration
+  ended up with two MD Viewer entries in "Open with" and two competing ProgIds.
+- Uninstall left the `*_backup` registry values behind, could leave `.md` pointing
+  at the ProgId it had just deleted, and never removed WebView2's data folder. The
+  uninstall hook now finishes all three.
+- Removed a dead variable in the webview's link click handler.
+
 ## [0.1.0] - 2026-11-10
 
 First release: a read-only, single-window Markdown viewer built with Tauri v2 and

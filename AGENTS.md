@@ -20,7 +20,7 @@ backend is one Rust file. Windows is the only exercised target.
 | Purpose | Command |
 | :-- | :-- |
 | Fast compile gate | `cargo check --manifest-path src-tauri/Cargo.toml` |
-| All tests | `cargo test --manifest-path src-tauri/Cargo.toml` (17 pass, 1 ignored) |
+| All tests | `cargo test --manifest-path src-tauri/Cargo.toml` (19 pass, 1 ignored) |
 | One test | `cargo test --manifest-path src-tauri/Cargo.toml open_command -- --nocapture` |
 | UI iteration | `node scripts/dev-server.js` → <http://localhost:8123/preview/harness.html> |
 | Desktop layout | <http://localhost:8123/preview/wide.html> (1280×900 iframe) |
@@ -45,9 +45,10 @@ backend is one Rust file. Windows is the only exercised target.
   `Document` payload to the webview. **Heading ids are added in JS**
   (`enhance()`), because the renderer emits plain `<h1>`; the outline and
   in-document anchors depend on that.
-- Sanitiser details that break styling if changed: inline `style` survives only
-  for `text-align` (table alignment), footnote markup is
-  `div.footnote-definition` + `sup.footnote-reference`, alerts are
+- Sanitiser details that break styling if changed: no inline `style` survives —
+  table alignment is converted to `align-left|center|right` classes *before*
+  sanitising, because the CSP blocks inline styles; footnote markup is
+  `div.footnote-definition` + `sup.footnote-reference`; alerts are
   `markdown-alert-<kind>` (not `markdown-alert`).
 - The window starts `visible: false`; Rust shows it when the frontend calls the
   `ready` command (3 s watchdog). Don't set `visible: true` — that reintroduces
@@ -87,6 +88,32 @@ backend is one Rust file. Windows is the only exercised target.
   `scripts\unregister-file-association.ps1 -Force`. The test registers the test
   binary, so re-register the real exe afterwards if the machine should keep the
   association (`scripts\register-file-association.ps1 -SetDefault`).
+
+## Windows installer (NSIS)
+
+- `bundle.fileAssociations[].name` **is** the ProgId on Windows: Tauri's template
+  passes it into `Software\Classes\<name>`. It must equal `PROG_ID` in `main.rs`
+  (a test enforces this). Putting a display string there silently creates a second
+  ProgId, and "Open with" then lists the app twice.
+- The template does **not** write `Applications\<exe>` (which supplies
+  `FriendlyAppName` — the picker's label) or `OpenWithProgids`, and its uninstall
+  leaves `<ProgId>_backup` values behind and can restore an extension default that
+  points at the ProgId it deleted. `src-tauri/windows/hooks.nsh` (wired through
+  `nsis.installerHooks`) handles all of it. Defines available in hooks:
+  `${PRODUCTNAME}`, `${MANUFACTURER}`, `${MAINBINARYNAME}`, `${BUNDLEID}`, `SHCTX`.
+- Build with `npm install` then `npx.cmd tauri build` (or `npm run bundle`);
+  output is `src-tauri/target/release/bundle/nsis/*-setup.exe`. Silent flags:
+  `/S`. `currentUser` install dir: `%LOCALAPPDATA%\MD Viewer`.
+- **Testing the installer mutates shared state.** It overwrites the
+  `MDViewer.Markdown` keys the portable build depends on, and the uninstall hook
+  deletes `%LOCALAPPDATA%\dev.mdviewer.app` (theme + recent files). Export the
+  HKCU keys first if they matter, and re-run
+  `scripts\register-file-association.ps1 -SetDefault` afterwards.
+- The CLI warns that the identifier `dev.mdviewer.app` ends with `.app` (a macOS
+  bundle-extension conflict). Changing it moves the WebView2 data dir and the
+  single-instance key, so treat it as a pre-1.0 migration, not a rename.
+- `package-lock.json` comes from `npm install` and should be committed;
+  `node_modules/` and `src-tauri/target/` are ignored.
 
 ## Verification habits
 

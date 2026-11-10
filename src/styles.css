@@ -807,6 +807,22 @@ kbd {
   vertical-align: top;
 }
 
+/* Alignment is a class rather than an inline style: the app's CSP forbids
+   inline styles, and `alignment_to_classes` in main.rs converts the renderer's
+   style attributes before sanitising. */
+.markdown th.align-left,
+.markdown td.align-left {
+  text-align: left;
+}
+.markdown th.align-center,
+.markdown td.align-center {
+  text-align: center;
+}
+.markdown th.align-right,
+.markdown td.align-right {
+  text-align: right;
+}
+
 .markdown thead th {
   font: 600 0.7rem/1.5 var(--font-ui);
   letter-spacing: 0.05em;

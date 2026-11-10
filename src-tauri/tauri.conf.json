@@ -54,14 +54,14 @@
     "fileAssociations": [
       {
         "ext": ["md", "markdown", "mdown", "mkd", "mkdn", "mdwn", "mdtxt", "mdtext"],
-        "name": "Markdown Document",
+        "name": "MDViewer.Markdown",
         "description": "Markdown Document",
         "mimeType": "text/markdown",
         "role": "Viewer"
       },
       {
         "ext": ["txt"],
-        "name": "Text Document",
+        "name": "MDViewer.Text",
         "description": "Plain Text Document",
         "mimeType": "text/plain",
         "role": "Viewer"
@@ -71,7 +71,8 @@
       "nsis": {
         "installMode": "currentUser",
         "displayLanguageSelector": false,
-        "compression": "lzma"
+        "compression": "lzma",
+        "installerHooks": "./windows/hooks.nsh"
       }
     }
   }

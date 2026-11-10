@@ -1,0 +1,6 @@
+# Keep a single line-ending convention in the repository, independent of each
+# machine's core.autocrlf. Everything here is text except the icon binaries.
+* text=auto eol=lf
+
+*.png binary
+*.ico binary
