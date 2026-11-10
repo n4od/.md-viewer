@@ -7,39 +7,6 @@ the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-### Added
-
-- NSIS installer hooks (`src-tauri/windows/hooks.nsh`, wired through
-  `nsis.installerHooks`) that write the `Applications\<exe>` entries
-  (`FriendlyAppName`, icon, command, `SupportedTypes`) and the per-extension
-  `OpenWithProgids` candidates Tauri's template omits.
-
-### Changed
-
-- Performance figures in the README now point at `PERFORMANCE.md` instead of
-  copying one run's numbers, which drift between runs.
-- `fileAssociations[].name` is now the runtime ProgId (`MDViewer.Markdown` /
-  `MDViewer.Text`); a test keeps the config and `PROG_ID` pinned together.
-- The installer path is verified end to end: silent install, one ProgId pointing
-  at the installed executable, one named "Open with" entry, double-click launch,
-  and an uninstall with no registry, install-directory or app-data residue. The
-  WebView2 download-bootstrapper path stays untested (no machine without the
-  runtime).
-
-### Fixed
-
-- Table column alignment relied on an inline `style="text-align: …"`, which the
-  app's own CSP (`style-src 'self'`) blocks. Alignment is emitted as
-  `align-left|center|right` classes before sanitising, so it renders in the app
-  and every inline style is now rejected outright.
-- The installer derived its ProgId from the association *display* name
-  (`"Markdown Document"`), so a machine that also had the per-user registration
-  ended up with two MD Viewer entries in "Open with" and two competing ProgIds.
-- Uninstall left the `*_backup` registry values behind, could leave `.md` pointing
-  at the ProgId it had just deleted, and never removed WebView2's data folder. The
-  uninstall hook now finishes all three.
-- Removed a dead variable in the webview's link click handler.
-
 ## [0.1.0] - 2026-11-10
 
 First release: a read-only, single-window Markdown viewer built with Tauri v2 and
@@ -121,19 +88,43 @@ executable (WebView2 runtime aside).
   `styles.css` / `app.js` run in any Chromium browser against a fake Tauri bridge,
   so UI work does not require a Rust rebuild. `preview/wide.html` forces a
   1280×900 viewport for desktop-layout checks.
-- 17 unit tests covering argument parsing, `file://` handling, BOM/UTF-16
-  decoding, truncation, GFM rendering, sanitising, table alignment, open-command
-  quoting, ProgId matching and picker arguments, plus render-speed guard rails.
-  One opt-in integration test (`--ignored`) writes and verifies the real registry
-  keys.
+- 19 unit tests covering argument parsing, `file://` handling, BOM/UTF-16
+  decoding, truncation, GFM rendering, sanitising, alignment, open-command
+  quoting, ProgId matching, picker arguments, installer/config consistency and
+  render speed. One opt-in integration test (`--ignored`) writes and verifies the
+  real registry keys.
 - Repository metadata: MIT `LICENSE`, `ROADMAP.md`, author credit, and
   `AGENTS.md` notes for future contributors.
+
+**Packaging**
+
+- NSIS installer hooks (`src-tauri/windows/hooks.nsh`, wired through
+  `nsis.installerHooks`) that write the `Applications\<exe>` entries
+  (`FriendlyAppName`, icon, command, `SupportedTypes`) and the per-extension
+  `OpenWithProgids` candidates Tauri's template omits. They also make uninstall
+  remove those keys, the `*_backup` values, a stale extension default and
+  WebView2's data folder.
+- CI (`.github/workflows/ci.yml`): `cargo check --all-targets` and `cargo test`
+  on `windows-latest`, with a Cargo cache.
+
+### Changed
+
+- `fileAssociations[].name` is the runtime ProgId (`MDViewer.Markdown` /
+  `MDViewer.Text`) rather than a display string, so the installer, the in-app
+  action and the scripts register one handler instead of two.
+- The installer path is verified end to end: silent install, a single ProgId,
+  one named "Open with" entry, double-click launch, and an uninstall with no
+  registry, install-directory or app-data residue. The WebView2
+  download-bootstrapper path stays untested (no machine without the runtime).
+- Performance figures in the README point at `PERFORMANCE.md` instead of copying
+  one run's numbers, which drift between runs.
 
 ### Security
 
 - Raw HTML in documents is allow-list sanitised with `ammonia`: no `<script>`,
   `<iframe>`, `<svg>`, `<form>`, no `on*` handlers, no `javascript:`/`data:`
-  URLs; inline styles are reduced to `text-align` only.
+  URLs; inline styles are dropped entirely (table alignment is emitted as a
+  class, because the CSP blocks inline styles).
 - CSP locks the webview down (`default-src 'self'`, `script-src 'self'`,
   `object-src 'none'`, `base-uri 'none'`, `form-action 'none'`, IPC-only
   `connect-src`).
@@ -171,6 +162,18 @@ Issues found and fixed during verification, before the first release:
 - Removed a hanging COM `IAssocHandler::Invoke` probe (no message pump) from the
   tooling rather than shipping a foot-gun.
 
+- Table column alignment relied on an inline `style` attribute, which the app's
+  own CSP (`style-src 'self'`) blocks, so it never rendered in the app. Alignment
+  is emitted as `align-left|center|right` classes before sanitising, and inline
+  styles are now rejected outright.
+- The installer derived its ProgId from the association display name
+  (`"Markdown Document"`), so a machine that also had the per-user registration
+  ended up with two MD Viewer entries in "Open with" and two competing ProgIds.
+- Uninstall left the `*_backup` registry values behind, could leave an extension
+  default pointing at the ProgId it had just deleted, and never removed WebView2's
+  data folder. The uninstall hook now finishes all three.
+- Removed a dead variable in the webview's link click handler.
+
 ### Measured
 
 Recorded on the development machine with the release build (see `PERFORMANCE.md`,
@@ -179,9 +182,9 @@ reproducible with `scripts/measure.ps1`):
 | Metric | Value |
 | :-- | :-- |
 | Portable executable | 4.35 MB |
-| Time to visible window (4 runs) | 891 / 1004 / 900 / 1010 ms |
-| `mdviewer.exe` working set / private | 22.3 MB / 5.2 MB |
-| WebView2 processes (working set sum / private) | 290.9 MB / 131.7 MB |
+| Time to visible window | 891–1118 ms across runs |
+| `mdviewer.exe` working set / private | 22–23 MB / ~5 MB |
+| WebView2 processes (working set sum / private) | 291–298 MB / ~132 MB |
 | Render 124 KiB Markdown (release) | 56.7 ms |
 | Render `sample.md` (8 KiB) | ~4 ms |
 
