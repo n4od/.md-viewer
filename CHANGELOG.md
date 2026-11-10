@@ -23,6 +23,16 @@ the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   occurrence; only the first 1500 are turned into highlight ranges, so a document
   with thousands of hits stays responsive while the count remains truthful.
 
+### Changed
+
+- The outline's scroll-spy measures heading offsets once per layout and
+  binary-searches them, instead of reading `offsetTop` for every heading on every
+  frame. On a 500-heading document that took the per-tick cost from 0.75 ms (and
+  scaling with document size) to about 0.0004 ms, at the price of one 0.7 ms
+  measurement pass whenever the layout changes (open, resize, an image loading).
+- CI enforces a frontend size budget (`src/` ≤ 80 KB, `app.js` ≤ 46 KB), so the
+  "three static files, no framework" promise is checked rather than remembered.
+
 ## [0.1.1] - 2026-11-11
 
 ### Added

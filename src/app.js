@@ -247,10 +247,18 @@
 
       docEl.innerHTML = doc.html || "";
       headings = enhance(docEl);
+      headingTops = null;   // offsets changed with the document
       buildToc(headings);
       updateHeader(doc);
       updateFooter(doc);
       rewriteLocalImages(doc);
+
+      // Local images can reflow the page when they finish loading, which moves
+      // every heading after them; drop the cached offsets when that happens.
+      docEl.querySelectorAll("img").forEach(function (img) {
+        if (img.complete) return;
+        img.addEventListener("load", function () { headingTops = null; }, { once: true });
+      });
 
       if (sameFile && options.preserveScroll) {
         // A live reload of the document already on screen: keep reading position.
@@ -510,17 +518,37 @@
     }
 
     var activeId = null;
+    var headingTops = null;   // document offsets, measured once per layout
+
+    /* Reading offsetTop for every heading on every scroll tick was the only part of
+     * the UI that scaled linearly with document size (measured 0.75 ms per tick at
+     * 500 headings, so ~7.5 ms at 5000). Measure once per layout, then binary
+     * search: no layout reads and O(log n) per tick. */
+    function measureHeadings() {
+      headingTops = headings.map(function (item) { return item.el.offsetTop; });
+    }
+
+    function headingIndexAt(threshold) {
+      if (!headingTops || headingTops.length !== headings.length) measureHeadings();
+      var low = 0;
+      var high = headingTops.length - 1;
+      var found = -1;
+      while (low <= high) {
+        var mid = (low + high) >> 1;
+        if (headingTops[mid] <= threshold) { found = mid; low = mid + 1; }
+        else { high = mid - 1; }
+      }
+      return found;
+    }
+
     function updateActiveHeading() {
       if (!headings.length) {
         setActiveHeadings([]);
         return;
       }
       var threshold = window.scrollY + 48 + 40;
-      var picked = null;
-      for (var i = 0; i < headings.length; i++) {
-        if (headings[i].el.offsetTop <= threshold) picked = headings[i]; else break;
-      }
-      if (!picked) picked = headings[0];
+      var index = headingIndexAt(threshold);
+      var picked = index >= 0 ? headings[index] : headings[0];
       if (picked && picked.id !== activeId) setActiveHeadings([picked.id]);
     }
 
@@ -536,7 +564,10 @@
     }
 
     window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onScroll);
+    window.addEventListener("resize", function () {
+      headingTops = null;   // wrapping and widths change with the viewport
+      onScroll();
+    });
 
     /* ---------- contents drawer ---------- */
 

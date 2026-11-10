@@ -22,6 +22,21 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # The frontend is three static files with no dependencies. This keeps it that
+      # way: if a change needs more room, raise the budget deliberately in review.
+      - name: Frontend size budget
+        working-directory: .
+        shell: pwsh
+        run: |
+          $totalBudget = 80KB
+          $jsBudget    = 46KB
+          $total = (Get-ChildItem src -File | Measure-Object -Property Length -Sum).Sum
+          $js    = (Get-Item src/app.js).Length
+          'src/ total {0:N1} KB of {1:N0} KB; app.js {2:N1} KB of {3:N0} KB' -f `
+            ($total / 1KB), ($totalBudget / 1KB), ($js / 1KB), ($jsBudget / 1KB)
+          if ($total -gt $totalBudget) { throw ("src/ is {0:N1} KB, over the {1:N0} KB budget" -f ($total / 1KB), ($totalBudget / 1KB)) }
+          if ($js -gt $jsBudget)       { throw ("src/app.js is {0:N1} KB, over the {1:N0} KB budget" -f ($js / 1KB), ($jsBudget / 1KB)) }
+
       - name: Rust toolchain
         uses: dtolnay/rust-toolchain@stable
 
