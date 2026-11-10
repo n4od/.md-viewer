@@ -22,10 +22,14 @@
     // Minimal stand-in for the Tauri IPC surface used by app.js.
     (function () {
       var handlers = {};
+      // Stand-in checkout path. convertFileSrc below maps it back to a URL
+      // relative to this page, so images in the sample payload still render
+      // wherever the repo is cloned.
+      var DEMO_ROOT = "C:\\notes\\md-viewer\\";
       var payload = {
-        path: "D:\\CODEs\\.md\\sample.md",
+        path: DEMO_ROOT + "sample.md",
         name: "sample.md",
-        dir: "D:\\CODEs\\.md",
+        dir: DEMO_ROOT.slice(0, -1),
         size: 4820,
         modified: Date.now() - 1000 * 60 * 12,
         words: 518,
@@ -35,7 +39,7 @@
         html: [
           "<h1>MD Viewer sample</h1>",
           "<p>This file exists to exercise every rendering path in one pass. Double-click it in Explorer, or drop it on the window.</p>",
-          "<p><img alt=\"Application icon\" src=\"../src-tauri/icons/icon.png\" /></p>",
+          "<p><img alt=\"Application icon\" src=\"src-tauri/icons/icon.png\" /></p>",
           "<h2>Text, emphasis and inline code</h2>",
           "<p>Regular prose with <strong>bold</strong>, <em>italic</em>, <del>struck through</del>, <code>inline code</code>, a <a href=\"sample-notes.md\" rel=\"noopener noreferrer\">link to the other sample</a>, an <a href=\"https://commonmark.org\" rel=\"noopener noreferrer\">external link</a>, a footnote reference<sup class=\"footnote-reference\"><a href=\"#1\" rel=\"noopener noreferrer\">1</a></sup>, H<sub>2</sub>O, and E = mc<sup>2</sup><sup>2</sup>.</p>",
           "<div class=\"footnote-definition\" id=\"1\"><sup class=\"footnote-definition-label\">1</sup><p>Footnotes keep their anchors, so this reference scrolls back here.</p></div>",
@@ -77,7 +81,7 @@
             if (command === "default_status") {
               return Promise.resolve({
                 progid: "MDViewer.Markdown",
-                executable: "D:\\CODEs\\.md\\src-tauri\\target\\release\\mdviewer.exe",
+                executable: DEMO_ROOT + "src-tauri\\target\\release\\mdviewer.exe",
                 isDefault: false,
                 supported: true
               });
@@ -98,9 +102,8 @@
             // paths the frontend produced and maps them back to repo-relative
             // URLs so images still render here.
             window.__lastAssetPath = path;
-            var repo = "D:\\CODEs\\.md\\";
-            if (path.indexOf(repo) === 0) {
-              return "../" + path.slice(repo.length).replace(/\\/g, "/");
+            if (path.indexOf(DEMO_ROOT) === 0) {
+              return "../" + path.slice(DEMO_ROOT.length).replace(/\\/g, "/");
             }
             return path;
           }

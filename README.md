@@ -1,5 +1,7 @@
 # MD Viewer
 
+[![CI](https://github.com/n4od/.md-viewer/actions/workflows/ci.yml/badge.svg)](https://github.com/n4od/.md-viewer/actions/workflows/ci.yml)
+
 A small, fast desktop reader for Markdown files, built with **Tauri v2 + Rust**.
 Double-click a `.md` file in Windows Explorer and it opens, rendered, with no
 browser, no tab bar and no editor chrome around it.
@@ -413,7 +415,7 @@ like it did nothing. Verify what the shell really offers with
 
 ```
 Apps the shell offers for '.md' (this is the 'Open with' list):
-  MD Viewer       recommended  D:\CODEs\.md\src-tauri\target\release\mdviewer.exe
+  MD Viewer       recommended  C:\Tools\mdviewer.exe
   Visual Studio Code           ...
 ```
 
