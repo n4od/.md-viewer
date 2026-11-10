@@ -1,0 +1,54 @@
+[package]
+name = "mdviewer"
+version = "0.1.0"
+description = "A fast, minimal Markdown viewer for Windows"
+authors = ["N4OD"]
+edition = "2021"
+rust-version = "1.90"
+license = "MIT"
+
+[[bin]]
+name = "mdviewer"
+path = "src/main.rs"
+
+[build-dependencies]
+tauri-build = { version = "2.7.4", features = [] }
+
+[dependencies]
+tauri = { version = "2.12.5", features = ["protocol-asset"] }
+tauri-plugin-single-instance = "2.5.5"
+tauri-plugin-dialog = "2.8.4"
+tauri-plugin-opener = "2.7.3"
+
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Markdown -> HTML. default-features = false drops the CLI-oriented getopts dep.
+pulldown-cmark = { version = "0.13.6", default-features = false, features = ["html"] }
+
+# HTML sanitiser for the small subset of raw HTML that survives rendering.
+ammonia = "4.2.4"
+
+# File watcher for live reload.
+notify = "8.2.2"
+
+# Percent-encoding for `http://asset.localhost/...` URLs (local images).
+percent-encoding = "2.3.2"
+
+# Per-user file association registration ("set as default"). Windows only;
+# `windows` matches the version tauri-runtime-wry uses so `hwnd()` interops.
+[target.'cfg(windows)'.dependencies]
+winreg = "0.56.0"
+windows = { version = "0.62.2", features = ["Win32_Foundation", "Win32_UI_Shell"] }
+
+[profile.release]
+# Small, fast, no debug info. Keeps the binary around 4.4 MB on Windows.
+opt-level = "s"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
+
+[profile.dev]
+# Debug builds of `tauri dev` are still fast enough for iterating on the frontend.
+opt-level = 1

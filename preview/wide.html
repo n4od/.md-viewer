@@ -1,0 +1,22 @@
+<!doctype html>
+<!--
+  Desktop-layout check for the preview harness: the harness inside a 1280x900
+  iframe, so media queries evaluate against a desktop viewport even when the
+  browser pane is narrow. Screenshot the iframe element to inspect the result.
+
+    node scripts/dev-server.js
+    open http://localhost:8123/preview/wide.html
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>MD Viewer — desktop layout</title>
+  <style>
+    html, body { margin: 0; background: #2f343a; }
+    iframe { display: block; width: 1280px; height: 900px; border: 0; background: #fff; }
+  </style>
+</head>
+<body>
+  <iframe src="harness.html" title="MD Viewer preview"></iframe>
+</body>
+</html>

@@ -1,0 +1,78 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "MD Viewer",
+  "version": "0.1.0",
+  "identifier": "dev.mdviewer.app",
+  "build": {
+    "frontendDist": "../src",
+    "devUrl": null,
+    "beforeDevCommand": "",
+    "beforeBuildCommand": ""
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      {
+        "label": "main",
+        "title": "MD Viewer",
+        "width": 900,
+        "height": 780,
+        "minWidth": 380,
+        "minHeight": 300,
+        "center": true,
+        "resizable": true,
+        "decorations": true,
+        "visible": false,
+        "dragDropEnabled": true,
+        "additionalBrowserArgs": "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --disable-background-networking --disable-component-update --no-first-run --disable-default-apps"
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; img-src 'self' asset: http://asset.localhost http: https: data:; style-src 'self'; script-src 'self'; connect-src ipc: http://ipc.localhost; object-src 'none'; base-uri 'none'; form-action 'none'",
+      "assetProtocol": {
+        "enable": true,
+        "scope": []
+      }
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis"],
+    "category": "Productivity",
+    "shortDescription": "A fast, minimal Markdown viewer.",
+    "publisher": "N4OD",
+    "copyright": "Copyright (c) 2026 N4OD",
+    "license": "MIT",
+    "longDescription": "A distraction-free desktop viewer for Markdown files, built with Tauri and Rust. Opens .md files from Windows Explorer, renders GitHub-flavoured Markdown, follows the system theme and live-reloads when the file changes on disk.",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.ico",
+      "icons/icon.png"
+    ],
+    "fileAssociations": [
+      {
+        "ext": ["md", "markdown", "mdown", "mkd", "mkdn", "mdwn", "mdtxt", "mdtext"],
+        "name": "Markdown Document",
+        "description": "Markdown Document",
+        "mimeType": "text/markdown",
+        "role": "Viewer"
+      },
+      {
+        "ext": ["txt"],
+        "name": "Text Document",
+        "description": "Plain Text Document",
+        "mimeType": "text/plain",
+        "role": "Viewer"
+      }
+    ],
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser",
+        "displayLanguageSelector": false,
+        "compression": "lzma"
+      }
+    }
+  }
+}

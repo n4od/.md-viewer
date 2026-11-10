@@ -1,0 +1,22 @@
+{
+  "name": "md-viewer",
+  "private": true,
+  "version": "0.1.0",
+  "description": "A fast, minimal Markdown viewer for Windows, built with Tauri v2 and Rust.",
+  "author": "N4OD (https://github.com/n4od)",
+  "license": "MIT",
+  "scripts": {
+    "dev": "tauri dev",
+    "build": "tauri build --no-bundle",
+    "bundle": "tauri build",
+    "icons": "powershell -ExecutionPolicy Bypass -File scripts/make-icons.ps1",
+    "register": "powershell -ExecutionPolicy Bypass -File scripts/register-file-association.ps1",
+    "unregister": "powershell -ExecutionPolicy Bypass -File scripts/unregister-file-association.ps1",
+    "measure": "powershell -ExecutionPolicy Bypass -File scripts/measure.ps1",
+    "preview": "node scripts/dev-server.js",
+    "test": "cargo test --manifest-path src-tauri/Cargo.toml"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.9.0"
+  }
+}
