@@ -913,6 +913,17 @@ fn reload(state: State<'_, Viewer>) -> Option<Document> {
     Some(load_document(&path))
 }
 
+/// The subset of `paths` that still exists as a file. The empty state calls this
+/// on start-up so recent entries whose file was moved or deleted quietly
+/// disappear, instead of failing when someone clicks them.
+#[tauri::command]
+fn filter_existing(paths: Vec<String>) -> Vec<String> {
+    paths
+        .into_iter()
+        .filter(|path| Path::new(path).is_file())
+        .collect()
+}
+
 #[tauri::command]
 async fn open_dialog(app: AppHandle) -> Result<Option<Document>, String> {
     use tauri_plugin_dialog::DialogExt;
@@ -1043,7 +1054,8 @@ fn run() {
             open_dialog,
             open_link,
             make_default,
-            default_status
+            default_status,
+            filter_existing
         ])
         .setup(move |app| {
             let handle = app.handle().clone();
@@ -1302,6 +1314,19 @@ footnote[^1]
         assert!(CLAIM_EXTENSIONS.iter().all(|ext| is_markdown(Path::new(&format!("file.{ext}")))));
         // A viewer should not claim plain text as its own type.
         assert!(!CLAIM_EXTENSIONS.contains(&"txt"));
+    }
+
+    #[test]
+    fn filter_existing_keeps_only_real_files() {
+        let real = temp_file("filter-existing.md", b"# hi");
+        let missing = std::env::temp_dir().join("mdviewer-definitely-missing-77.md");
+        let kept = filter_existing(vec![
+            real.display().to_string(),
+            missing.display().to_string(),
+            String::new(),
+        ]);
+        assert_eq!(kept, vec![real.display().to_string()]);
+        let _ = std::fs::remove_file(real);
     }
 
     #[test]

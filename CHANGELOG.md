@@ -7,6 +7,27 @@ the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **Retry** on the document error card: a reload that fails (file deleted or
+  renamed by an editor mid-save) keeps the last good render on screen and names
+  the file instead of blanking the reading pane. Clicking Retry re-reads it.
+- **Recent-list housekeeping**: entries whose file no longer exists are dropped on
+  start-up, and the list has a **Clear** action. Backed by a new `filter_existing`
+  command, so the check happens in Rust rather than trusting the webview.
+
+### Changed
+
+- The bundle identifier is `mdviewer` instead of `dev.mdviewer.app`, which made the
+  bundle step warn that the `.app` suffix collides with macOS bundles. Note the
+  side effect: WebView2's data directory moves to `%LOCALAPPDATA%\mdviewer`, so the
+  stored theme and recent-files list reset once on the next run.
+- Recorded that the NSIS installer was exercised end to end and re-run inside
+  Windows Sandbox (2026-11-11), which supersedes the 0.1.0 note that the installer
+  path had not been exercised.
+- Publishing guidance lives in the `github-publish-release` skill; the repository
+  deliberately keeps no second copy of it.
+
 ## [0.1.0] - 2026-11-10
 
 First release: a read-only, single-window Markdown viewer built with Tauri v2 and
@@ -199,5 +220,5 @@ reproducible with `scripts/measure.ps1`):
 - Windows reserves the choice of default application for the user: the in-app
   action registers the app and opens the system picker, but the final
   confirmation is always a user action.
-- The NSIS installer path is configured and documented but was not exercised in
-  this environment; the unpackaged workflow was.
+- The NSIS installer path is configured and documented; it had not been exercised
+  at the time of this entry (verified afterwards — see `[Unreleased]`).

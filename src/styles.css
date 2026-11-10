@@ -470,13 +470,44 @@ kbd {
   border-top: 1px solid var(--line-soft);
 }
 
+.recent-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.65rem;
+}
+
 .recent-label {
   font-size: 0.66rem;
   font-weight: 650;
   letter-spacing: 0.13em;
   text-transform: uppercase;
   color: var(--text-faint);
-  margin-bottom: 0.65rem;
+}
+
+.btn-inline {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--text-faint);
+  font: 600 0.68rem/1 var(--font-ui);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 0.35em 0.5em;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.btn-inline:hover {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.btn-inline:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .recent-item {
@@ -962,6 +993,32 @@ kbd {
   color: var(--text);
   font-size: 0.88rem;
   white-space: pre-wrap;
+}
+
+/* The document-level error card keeps the last good render on screen and offers
+   a retry, so a file that is deleted and rewritten by an editor does not blank
+   the article. */
+#error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+#error-text {
+  flex: 1 1 14rem;
+  min-width: 0;
+}
+
+#error .btn-inline {
+  color: var(--danger);
+  flex: none;
+}
+
+#error .btn-inline:hover {
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  color: var(--danger);
 }
 
 /* ---------- contents drawer ---------- */

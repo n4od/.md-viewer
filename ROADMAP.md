@@ -1,8 +1,9 @@
 # Roadmap
 
 Where MD Viewer is going, and what it deliberately is not. Status as of
-**0.1.0** (2026-11-10): read-only viewer, Windows-verified, associations
-installable and settable from inside the app.
+**0.1.0** (released 2026-11-10): read-only viewer, Windows-verified, published to
+GitHub with CI, installer and in-app association both working. Installer also
+verified in Windows Sandbox (2026-11-11).
 
 ## Guiding principles
 
@@ -23,23 +24,30 @@ decision, not a pull request.
 
 Small, verifiable, and mostly finishing what 0.1.0 started.
 
-- [ ] **Exercise the installer end to end.** NSIS is configured but has not been
-      run in a clean VM or Windows Sandbox: associations, WebView2 bootstrap on an
-      image that lacks it, and uninstall leaving no registry or file residue.
-- [ ] **Add CI** (GitHub Actions, `windows-latest`): `cargo check`, `cargo test`,
-      then `cargo fmt --check` and `cargo clippy -- -D warnings` once the tree is
-      clean. Cache `~/.cargo` and `target/` between runs.
-- [ ] **Settle the CSP question for table alignment.** `style-src 'self'` likely
-      blocks the inline `style="text-align:…"` that table cells carry; verify in
-      the real app (the preview harness has no CSP) and either allow
-      `style-src-attr` narrowly or emit a class instead. Add a regression check.
+- [x] **Exercise the installer end to end.** Silent install, one
+      `MDViewer.Markdown` ProgId pointing at the installed executable, a single
+      named "Open with" entry, double-click launch, and an uninstall with no
+      registry, install-directory or app-data residue. Re-run in Windows Sandbox
+      (2026-11-11). The one branch a machine with WebView2 present cannot exercise
+      is the download-bootstrapper, which only runs where the runtime is absent.
+- [x] **Add CI** (GitHub Actions, `windows-latest`): `cargo check --all-targets`
+      and `cargo test`, with a Cargo cache; green on `main`. `cargo fmt --check`
+      and `cargo clippy -- -D warnings` still need a one-time formatting pass
+      before they can join the workflow.
+- [x] **Settle the CSP question for table alignment.** Alignment is emitted as
+      `align-left|center|right` classes before sanitising and inline `style` is
+      rejected outright, so the CSP can never block it. Covered by tests.
+- [x] **Rename the bundle identifier** to `mdviewer` (was `dev.mdviewer.app`,
+      which made Tauri warn about a macOS bundle-extension clash). A macOS target
+      would need a reverse-DNS identifier of its own — see the macOS item below.
 - [ ] **Session continuity.** With no file argument, offer to reopen the last
       document (opt-in, stored alongside the recent files).
 - [ ] **CLI flags**: `--version` and `--register-default` for scripted installs
       and Sandbox `.wsb` logon commands, with meaningful exit codes (the release
       binary has no console, so don't print to stdout).
-- [ ] **Keep the last good render.** If a watched file is deleted or renamed
-      mid-edit, show a non-destructive notice instead of replacing the article.
+- [x] **Keep the last good render.** A failed reload keeps the article on screen
+      and shows a notice naming the file, with a **Retry** action, instead of
+      blanking the reading pane.
 - [ ] **Accessibility pass**: focus order through the top bar, outline and find
       bar; screen-reader labels for the icon buttons; contrast check for muted
       text in both themes; keyboard-only walkthrough of every action.
@@ -50,8 +58,9 @@ Small, verifiable, and mostly finishing what 0.1.0 started.
       count that stays accurate for very long documents.
 - [ ] **Heading anchors**: hover link plus "copy link to section", next to the
       outline.
-- [ ] **Recent files housekeeping**: drop entries whose file no longer exists,
-      and a "clear list" action.
+- [x] **Recent files housekeeping**: entries whose file no longer exists are
+      pruned from the list and from storage on start-up, and there is a "Clear"
+      action.
 - [ ] **Print/PDF polish**: verify page breaks for code blocks and tables, and
       hide the outline/find chrome reliably (print styles exist; untested on paper).
 - [ ] **Per-document reading position**, so reopening a long file returns to
@@ -65,7 +74,8 @@ Small, verifiable, and mostly finishing what 0.1.0 started.
 
 - [ ] **macOS and Linux**: packaging plus associations (macOS `Opened` events,
       Linux `.desktop` `MimeType`). Different flows from Windows; needs its own
-      verification matrix, not a port of the registry code.
+      verification matrix, not a port of the registry code. macOS also needs a
+      reverse-DNS bundle identifier (`mdviewer` is Windows/Linux-shaped).
 - [ ] **Auto-update** via `tauri-plugin-updater`, signed bundles, and a release
       host. Needs signing keys and a decision about where update metadata lives.
 - [ ] **Math and diagrams** (KaTeX / Mermaid): high value for notes, high cost for

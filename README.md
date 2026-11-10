@@ -210,6 +210,7 @@ Commands (webview → Rust):
 | `initial_document` | `Document?` | The document rendered at startup. |
 | `load_path(path)` | `Document` | Recent-files list, relative links. |
 | `reload` | `Document?` | `Ctrl+R` / `F5`. |
+| `filter_existing(paths)` | `Vec<String>` | Prunes recent entries whose file has been moved or deleted. |
 | `open_dialog` | `Document?` | `Ctrl+O`, toolbar button (blocking dialog on a worker thread). |
 | `open_link(href)` | `LinkOutcome` | Link clicks: external → OS browser, sibling `.md` → open in place, missing → notice. |
 | `make_default` | `DefaultReport` | Registers MD Viewer as a `.md` handler, tells the shell, then shows the Windows picker. |
@@ -361,12 +362,12 @@ Run the produced `MD Viewer_0.1.0_x64-setup.exe`, install, then double-click any
 `.md` file. If Windows asks which app to use, pick **MD Viewer** and tick
 *Always use this app*.
 
-The installer is verified end to end on a machine with WebView2 present
-(installs to `%LOCALAPPDATA%\MD Viewer`, one `MDViewer.Markdown` ProgId pointing
-at the installed exe, one named entry in the picker, double-click launches it,
-uninstall leaves no registry keys, app data or install directory behind). A
-machine *without* WebView2 exercises the download-bootstrapper path, which is
-still unverified — test it in a clean VM/Sandbox before publishing.
+The installer is verified end to end: silent install, one `MDViewer.Markdown`
+ProgId pointing at the installed exe, one named entry in the picker, double-click
+launch, and an uninstall that leaves no registry keys, app data or install
+directory behind. It has also been run inside Windows Sandbox (2026-11-11). The
+download-bootstrapper branch only executes where the WebView2 runtime is absent,
+so an image without it remains the one case worth exercising explicitly.
 
 Unattended checks:
 
@@ -376,7 +377,7 @@ Unattended checks:
 ```
 
 Installing and uninstalling replaces keys shared with the dev registration, and
-the uninstall hook removes WebView2's data folder (`%LOCALAPPDATA%\dev.mdviewer.app`,
+the uninstall hook removes WebView2's data folder (`%LOCALAPPDATA%\mdviewer`,
 which holds the theme and recent-files list). Re-run
 `scripts\register-file-association.ps1 -SetDefault` afterwards if you develop
 against the portable exe.
@@ -487,7 +488,7 @@ caveats that always apply to a fresh Windows instance:
 | Find | `Ctrl+F`, type `markdown` → highlights and `n/N` counter; Enter jumps, Esc closes. |
 | Outline | `Ctrl+B` opens the drawer, the current section is highlighted while scrolling. |
 | Empty/error states | Open a file, then rename it on disk and press `F5` → an inline error, the app stays usable. |
-| Tests | `cd src-tauri; cargo test` → 19 tests over argument parsing, decoding, rendering, sanitising, alignment, installer/config consistency and render speed, plus one opt-in registry test. |
+| Tests | `cd src-tauri; cargo test` → 20 tests over argument parsing, decoding, rendering, sanitising, alignment, recent-file filtering, installer/config consistency and render speed, plus one opt-in registry test. |
 
 ### Troubleshooting
 
@@ -510,7 +511,7 @@ Reproduce everything below with:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts\measure.ps1      # time + memory
-cargo test --manifest-path src-tauri\Cargo.toml                   # 19 tests, 1 ignored
+cargo test --manifest-path src-tauri\Cargo.toml                   # 20 tests, 1 ignored
 cargo test --release rendering_a_large_document_stays_fast -- --nocapture
 ```
 

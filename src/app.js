@@ -205,9 +205,10 @@
       welcomeError.textContent = message;
     }
 
-    function showDocError(message) {
+    function showDocError(message, canRetry) {
       errorCard.hidden = false;
-      errorCard.textContent = message;
+      $("error-text").textContent = message;
+      $("error-retry").hidden = !canRetry;
     }
 
     /* ---------- document rendering ---------- */
@@ -218,7 +219,9 @@
       if (doc.error) {
         var message = "Could not open " + (doc.path || "file") + "\n" + doc.error;
         if (current && !options.reset) {
-          showDocError(message);
+          // Keep the last good render on screen: an editor that saves by
+          // deleting and rewriting the file must not blank the article.
+          showDocError(message, true);
         } else {
           welcomeError.textContent = message;
           welcomeError.hidden = false;
@@ -518,8 +521,27 @@
         var doc = await invoke("reload");
         if (doc) render(doc, { preserveScroll: true, notice: "Reloaded from disk" });
       } catch (error) {
-        showDocError("Reload failed: " + String(error.message || error));
+        showDocError("Reload failed: " + String(error.message || error), true);
       }
+    }
+
+    /* Recents are only useful while the file is still there. Ask Rust which
+     * paths still exist, drop the rest, and re-render. */
+    function pruneRecent() {
+      var items = readRecent();
+      if (!items.length) return;
+      invoke("filter_existing", { paths: items.map(function (item) { return item.path; }) })
+        .then(function (kept) {
+          if (!kept) return;
+          var alive = Object.create(null);
+          kept.forEach(function (path) { alive[path] = true; });
+          var pruned = readRecent().filter(function (item) { return alive[item.path]; });
+          if (pruned.length !== items.length) {
+            try { localStorage.setItem(RECENT_KEY, JSON.stringify(pruned)); } catch (_) {}
+            renderRecent();
+          }
+        })
+        .catch(noop);
     }
 
     /* ---------- links ---------- */
@@ -733,6 +755,12 @@
 
     $("btn-open").addEventListener("click", openDialog);
     $("welcome-open").addEventListener("click", openDialog);
+    $("error-retry").addEventListener("click", reloadFile);
+    $("recent-clear").addEventListener("click", function () {
+      try { localStorage.removeItem(RECENT_KEY); } catch (_) {}
+      renderRecent();
+      toast("Recent list cleared");
+    });
 
     /* ---------- "set as default" ---------- */
 
@@ -802,7 +830,7 @@
       });
       listen("md://error", function (event) {
         var message = (event.payload && event.payload.message) || "Unknown error";
-        if (current) showDocError(message); else { welcomeError.textContent = message; welcomeError.hidden = false; }
+        if (current) showDocError(message, true); else { welcomeError.textContent = message; welcomeError.hidden = false; }
         toast(message);
       });
       listen("md://notice", function (event) {
@@ -816,6 +844,7 @@
     /* ---------- startup ---------- */
 
     renderRecent();
+    pruneRecent();
     subscribe();
     refreshDefaultStatus();
 

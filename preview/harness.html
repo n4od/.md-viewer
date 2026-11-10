@@ -78,6 +78,13 @@
             if (command === "load_path") return Promise.resolve(Object.assign({}, payload, { name: (args && args.path) || "file.md" }));
             if (command === "open_dialog") return Promise.resolve(null);
             if (command === "open_link") return Promise.resolve({ kind: "external", url: args && args.href });
+            if (command === "filter_existing") {
+              // Pretend anything ending in "gone.md" no longer exists, so the
+              // recent-list pruning is testable in the browser.
+              return Promise.resolve(((args && args.paths) || []).filter(function (p) {
+                return !/gone\.md$/i.test(p);
+              }));
+            }
             if (command === "default_status") {
               return Promise.resolve({
                 progid: "MDViewer.Markdown",
@@ -119,6 +126,16 @@
         (handlers[name] || []).forEach(function (handler) { handler({ event: name, payload: payload }); });
       };
       window.__previewPayload = payload;
+
+      // Seed a recent list (one entry points at a file that no longer exists, so
+      // pruneRecent() has something to drop).
+      try {
+        localStorage.setItem("mdviewer.recent", JSON.stringify([
+          { path: "C:\\notes\\md-viewer\\sample.md", name: "sample.md", dir: "C:\\notes\\md-viewer", at: Date.now() },
+          { path: "C:\\notes\\gone.md",              name: "gone.md",   dir: "C:\\notes",             at: Date.now() - 60000 },
+          { path: "C:\\notes\\md-viewer\\CHANGELOG.md", name: "CHANGELOG.md", dir: "C:\\notes\\md-viewer", at: Date.now() - 120000 }
+        ]));
+      } catch (_) {}
     })();
   </script>
 
@@ -166,13 +183,19 @@
         <p id="default-status" class="default-status" hidden></p>
         <p class="hint"><kbd>Ctrl</kbd><kbd>O</kbd> to open <span class="dot">·</span> <kbd>F5</kbd> to reload <span class="dot">·</span> drag &amp; drop supported</p>
         <div id="recent-wrap" class="recent-wrap" hidden>
-          <div class="recent-label">Recently opened</div>
+          <div class="recent-head">
+            <span class="recent-label">Recently opened</span>
+            <button id="recent-clear" class="btn-inline" type="button">Clear</button>
+          </div>
           <div id="recent-list" class="recent-list"></div>
         </div>
       </div>
     </section>
 
-    <div id="error" class="error-card" hidden role="alert"></div>
+    <div id="error" class="error-card" hidden role="alert">
+      <span id="error-text"></span>
+      <button id="error-retry" class="btn-inline" type="button" hidden>Retry</button>
+    </div>
     <article id="doc" class="markdown" hidden aria-label="Document"></article>
 
     <div id="doc-footer" class="doc-footer" hidden>

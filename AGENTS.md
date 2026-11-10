@@ -20,7 +20,7 @@ backend is one Rust file. Windows is the only exercised target.
 | Purpose | Command |
 | :-- | :-- |
 | Fast compile gate | `cargo check --manifest-path src-tauri/Cargo.toml` |
-| All tests | `cargo test --manifest-path src-tauri/Cargo.toml` (19 pass, 1 ignored) |
+| All tests | `cargo test --manifest-path src-tauri/Cargo.toml` (20 pass, 1 ignored) |
 | One test | `cargo test --manifest-path src-tauri/Cargo.toml open_command -- --nocapture` |
 | UI iteration | `node scripts/dev-server.js` → <http://localhost:8123/preview/harness.html> |
 | Desktop layout | <http://localhost:8123/preview/wide.html> (1280×900 iframe) |
@@ -107,12 +107,12 @@ backend is one Rust file. Windows is the only exercised target.
   `/S`. `currentUser` install dir: `%LOCALAPPDATA%\MD Viewer`.
 - **Testing the installer mutates shared state.** It overwrites the
   `MDViewer.Markdown` keys the portable build depends on, and the uninstall hook
-  deletes `%LOCALAPPDATA%\dev.mdviewer.app` (theme + recent files). Export the
+  deletes `%LOCALAPPDATA%\mdviewer` (theme + recent files). Export the
   HKCU keys first if they matter, and re-run
   `scripts\register-file-association.ps1 -SetDefault` afterwards.
-- The CLI warns that the identifier `dev.mdviewer.app` ends with `.app` (a macOS
-  bundle-extension conflict). Changing it moves the WebView2 data dir and the
-  single-instance key, so treat it as a pre-1.0 migration, not a rename.
+- The bundle identifier is `mdviewer` (was `dev.mdviewer.app`, which made the CLI
+  warn about a macOS bundle-extension clash). A bare identifier is fine on Windows;
+  macOS wants reverse-DNS, so a macOS target would need one of its own.
 - `package-lock.json` comes from `npm install` and should be committed;
   `node_modules/` and `src-tauri/target/` are ignored.
 

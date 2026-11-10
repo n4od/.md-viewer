@@ -52,13 +52,19 @@
         <p class="hint"><kbd>Ctrl</kbd><kbd>O</kbd> to open <span class="dot">·</span> <kbd>F5</kbd> to reload <span class="dot">·</span> drag &amp; drop supported</p>
 
         <div id="recent-wrap" class="recent-wrap" hidden>
-          <div class="recent-label">Recently opened</div>
+          <div class="recent-head">
+            <span class="recent-label">Recently opened</span>
+            <button id="recent-clear" class="btn-inline" type="button">Clear</button>
+          </div>
           <div id="recent-list" class="recent-list"></div>
         </div>
       </div>
     </section>
 
-    <div id="error" class="error-card" hidden role="alert"></div>
+    <div id="error" class="error-card" hidden role="alert">
+      <span id="error-text"></span>
+      <button id="error-retry" class="btn-inline" type="button" hidden>Retry</button>
+    </div>
 
     <article id="doc" class="markdown" hidden aria-label="Document"></article>
 
