@@ -30,8 +30,9 @@ backend is one Rust file. Windows is the only exercised target.
   `npm.ps1`/`npx.ps1` are blocked by execution policy on this machine — use
   `npm.cmd` / `npx.cmd`, and note `node_modules` is absent, so `npm run ...`
   needs `npm install` first.
-- There is no CI, no lint/format config, and no typechecker. Don't invent
-  `npm run lint`. `cargo check` + tests are the real gate.
+- CI lives in `.github/workflows/ci.yml` (windows-latest: `cargo check
+  --all-targets`, then `cargo test`). There is still no lint/format/typecheck
+  config — don't invent `npm run lint`; `cargo check` + tests are the gate.
 - HTML/CSS/JS are embedded at compile time (`frontendDist: ../src`), so plain
   `cargo run` shows stale assets after frontend edits. Use the preview harness,
   or `npx tauri dev` (serves `src/` from disk) when the CLI is installed.
