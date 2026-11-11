@@ -90,16 +90,32 @@ struct LinkOutcome {
 
 impl LinkOutcome {
     fn ignored() -> Self {
-        Self { kind: "ignored", url: None, doc: None }
+        Self {
+            kind: "ignored",
+            url: None,
+            doc: None,
+        }
     }
     fn missing(url: String) -> Self {
-        Self { kind: "missing", url: Some(url), doc: None }
+        Self {
+            kind: "missing",
+            url: Some(url),
+            doc: None,
+        }
     }
     fn external(url: String) -> Self {
-        Self { kind: "external", url: Some(url), doc: None }
+        Self {
+            kind: "external",
+            url: Some(url),
+            doc: None,
+        }
     }
     fn document(url: String, doc: Document) -> Self {
-        Self { kind: "document", url: Some(url), doc: Some(doc) }
+        Self {
+            kind: "document",
+            url: Some(url),
+            doc: Some(doc),
+        }
     }
 }
 
@@ -283,7 +299,10 @@ fn read_source(path: &Path) -> Result<(String, bool), String> {
 }
 
 fn count_words(source: &str) -> usize {
-    source.split_whitespace().filter(|token| !token.is_empty()).count()
+    source
+        .split_whitespace()
+        .filter(|token| !token.is_empty())
+        .count()
 }
 
 // ---------------------------------------------------------------------------
@@ -348,7 +367,9 @@ fn sanitize(dirty: &str) -> String {
     builder.add_tag_attributes("source", ["src", "srcset", "type", "media"]);
     builder.add_tag_attributes(
         "video",
-        ["src", "poster", "controls", "loop", "muted", "preload", "width", "height"],
+        [
+            "src", "poster", "controls", "loop", "muted", "preload", "width", "height",
+        ],
     );
     builder.add_tag_attributes("audio", ["src", "controls", "loop", "muted", "preload"]);
     builder.add_tag_attributes("time", ["datetime"]);
@@ -383,7 +404,7 @@ fn add_image_dimensions(html: String, dir: Option<&Path>) -> String {
     };
 
     let mut out: Option<String> = None;
-    let mut copied = 0usize;   // start of the region not yet copied to `out`
+    let mut copied = 0usize; // start of the region not yet copied to `out`
     let mut search = 0usize;
     // A repeated image (an icon used a hundred times) should be read once.
     let mut sizes: std::collections::HashMap<PathBuf, Option<(u32, u32)>> =
@@ -406,7 +427,11 @@ fn add_image_dimensions(html: String, dir: Option<&Path>) -> String {
             None => continue,
         };
         let size = local_image_path(&src, dir)
-            .map(|path| *sizes.entry(path).or_insert_with_key(|path| image_dimensions(path)))
+            .map(|path| {
+                *sizes
+                    .entry(path)
+                    .or_insert_with_key(|path| image_dimensions(path))
+            })
             .unwrap_or(None);
         let (width, height) = match size {
             Some(size) => size,
@@ -460,9 +485,10 @@ fn tag_end(html: &str, start: usize) -> Option<usize> {
 /// escapes `&` and `"`; values may be single-quoted, double-quoted or bare.
 fn attribute_value(tag: &str, name: &str) -> Option<String> {
     let bytes = tag.as_bytes();
-    let mut i = 1;   // past '<'
-    while i < bytes.len() && !bytes[i].is_ascii_whitespace() && bytes[i] != b'>' && bytes[i] != b'/' {
-        i += 1;      // tag name
+    let mut i = 1; // past '<'
+    while i < bytes.len() && !bytes[i].is_ascii_whitespace() && bytes[i] != b'>' && bytes[i] != b'/'
+    {
+        i += 1; // tag name
     }
     while i < bytes.len() {
         while i < bytes.len() && (bytes[i].is_ascii_whitespace() || bytes[i] == b'/') {
@@ -485,7 +511,7 @@ fn attribute_value(tag: &str, name: &str) -> Option<String> {
             i += 1;
         }
         if i >= bytes.len() || bytes[i] != b'=' {
-            continue;   // boolean attribute
+            continue; // boolean attribute
         }
         i += 1;
         while i < bytes.len() && bytes[i].is_ascii_whitespace() {
@@ -622,7 +648,7 @@ fn image_dimensions(path: &Path) -> Option<(u32, u32)> {
 }
 
 fn jpeg_dimensions(head: &[u8]) -> Option<(u32, u32)> {
-    let mut i = 2;   // past the Start-Of-Image marker
+    let mut i = 2; // past the Start-Of-Image marker
     while i + 9 <= head.len() {
         if head[i] != 0xff {
             i += 1;
@@ -721,64 +747,262 @@ const BLOCK_C: Option<(&str, &str)> = Some(("/*", "*/"));
 /// can be coloured here; one table per language would be far more code than the
 /// difference is worth.
 const KW_C: &[&str] = &[
-    "abstract", "and", "as", "async", "auto", "await", "bool", "break", "byte", "case",
-    "catch", "chan", "char", "class", "const", "continue", "crate", "defer", "def",
-    "default", "delegate", "delete", "do", "double", "dyn", "elif", "else", "enum",
-    "except", "export", "extends", "extern", "false", "final", "finally", "float", "fn",
-    "for", "foreach", "from", "func", "function", "go", "goto", "if", "impl",
-    "implements", "import", "in", "inline", "instanceof", "int", "interface", "internal",
-    "is", "let", "long", "loop", "match", "mod", "module", "move", "mut", "namespace",
-    "new", "nil", "null", "nullptr", "of", "operator", "or", "override", "package",
-    "private", "protected", "protocol", "pub", "public", "range", "ref", "register",
-    "return", "select", "self", "short", "signed", "sizeof", "static", "string",
-    "struct", "super", "switch", "this", "throw", "throws", "trait", "true", "try",
-    "type", "typedef", "typeof", "uint", "ulong", "union", "unsigned", "unsafe",
-    "ushort", "use", "using", "var", "virtual", "void", "volatile", "where", "while",
-    "with", "yield",
+    "abstract",
+    "and",
+    "as",
+    "async",
+    "auto",
+    "await",
+    "bool",
+    "break",
+    "byte",
+    "case",
+    "catch",
+    "chan",
+    "char",
+    "class",
+    "const",
+    "continue",
+    "crate",
+    "defer",
+    "def",
+    "default",
+    "delegate",
+    "delete",
+    "do",
+    "double",
+    "dyn",
+    "elif",
+    "else",
+    "enum",
+    "except",
+    "export",
+    "extends",
+    "extern",
+    "false",
+    "final",
+    "finally",
+    "float",
+    "fn",
+    "for",
+    "foreach",
+    "from",
+    "func",
+    "function",
+    "go",
+    "goto",
+    "if",
+    "impl",
+    "implements",
+    "import",
+    "in",
+    "inline",
+    "instanceof",
+    "int",
+    "interface",
+    "internal",
+    "is",
+    "let",
+    "long",
+    "loop",
+    "match",
+    "mod",
+    "module",
+    "move",
+    "mut",
+    "namespace",
+    "new",
+    "nil",
+    "null",
+    "nullptr",
+    "of",
+    "operator",
+    "or",
+    "override",
+    "package",
+    "private",
+    "protected",
+    "protocol",
+    "pub",
+    "public",
+    "range",
+    "ref",
+    "register",
+    "return",
+    "select",
+    "self",
+    "short",
+    "signed",
+    "sizeof",
+    "static",
+    "string",
+    "struct",
+    "super",
+    "switch",
+    "this",
+    "throw",
+    "throws",
+    "trait",
+    "true",
+    "try",
+    "type",
+    "typedef",
+    "typeof",
+    "uint",
+    "ulong",
+    "union",
+    "unsigned",
+    "unsafe",
+    "ushort",
+    "use",
+    "using",
+    "var",
+    "virtual",
+    "void",
+    "volatile",
+    "where",
+    "while",
+    "with",
+    "yield",
 ];
 
 const KW_PY: &[&str] = &[
-    "and", "as", "assert", "async", "await", "break", "class", "continue", "def", "del",
-    "elif", "else", "except", "False", "finally", "for", "from", "global", "if", "import",
-    "in", "is", "lambda", "None", "nonlocal", "not", "or", "pass", "raise", "return",
-    "True", "try", "while", "with", "yield",
+    "and", "as", "assert", "async", "await", "break", "class", "continue", "def", "del", "elif",
+    "else", "except", "False", "finally", "for", "from", "global", "if", "import", "in", "is",
+    "lambda", "None", "nonlocal", "not", "or", "pass", "raise", "return", "True", "try", "while",
+    "with", "yield",
 ];
 
 /// Shell keywords plus the commands that show up in almost every snippet. A
 /// command list is a heuristic, but colouring the verb is most of what makes a
 /// shell block scannable.
 const KW_SHELL: &[&str] = &[
-    "case", "do", "done", "elif", "else", "esac", "fi", "for", "function", "if", "in",
-    "local", "return", "select", "then", "until", "while", "export", "source", "set",
-    "unset", "read", "exit", "echo", "cd", "ls", "mkdir", "rm", "cp", "mv", "cat",
-    "grep", "sed", "awk", "curl", "git", "npm", "npx", "node", "cargo", "make", "sudo",
-    "apt", "brew", "python", "pip", "docker", "ssh", "tar", "chmod", "kill", "find",
-    "sort", "uniq", "head", "tail", "wc", "tee", "which", "env", "date", "printf",
+    "case", "do", "done", "elif", "else", "esac", "fi", "for", "function", "if", "in", "local",
+    "return", "select", "then", "until", "while", "export", "source", "set", "unset", "read",
+    "exit", "echo", "cd", "ls", "mkdir", "rm", "cp", "mv", "cat", "grep", "sed", "awk", "curl",
+    "git", "npm", "npx", "node", "cargo", "make", "sudo", "apt", "brew", "python", "pip", "docker",
+    "ssh", "tar", "chmod", "kill", "find", "sort", "uniq", "head", "tail", "wc", "tee", "which",
+    "env", "date", "printf",
 ];
 
 const KW_SQL: &[&str] = &[
-    "add", "all", "alter", "and", "as", "asc", "begin", "between", "by", "case", "column",
-    "commit", "constraint", "create", "default", "delete", "desc", "distinct", "drop",
-    "else", "end", "exists", "foreign", "from", "full", "group", "having", "if", "in",
-    "index", "inner", "insert", "into", "is", "join", "key", "left", "like", "limit",
-    "not", "null", "on", "or", "order", "outer", "primary", "references", "right",
-    "rollback", "select", "set", "table", "then", "union", "unique", "update", "values",
-    "when", "where",
+    "add",
+    "all",
+    "alter",
+    "and",
+    "as",
+    "asc",
+    "begin",
+    "between",
+    "by",
+    "case",
+    "column",
+    "commit",
+    "constraint",
+    "create",
+    "default",
+    "delete",
+    "desc",
+    "distinct",
+    "drop",
+    "else",
+    "end",
+    "exists",
+    "foreign",
+    "from",
+    "full",
+    "group",
+    "having",
+    "if",
+    "in",
+    "index",
+    "inner",
+    "insert",
+    "into",
+    "is",
+    "join",
+    "key",
+    "left",
+    "like",
+    "limit",
+    "not",
+    "null",
+    "on",
+    "or",
+    "order",
+    "outer",
+    "primary",
+    "references",
+    "right",
+    "rollback",
+    "select",
+    "set",
+    "table",
+    "then",
+    "union",
+    "unique",
+    "update",
+    "values",
+    "when",
+    "where",
 ];
 
 /// PowerShell, which a Windows-first project's docs reach for often. Backtick is
 /// an escape character there rather than a quote, so it is not a delimiter here.
 const KW_PS: &[&str] = &[
-    "begin", "break", "catch", "class", "continue", "data", "do", "dynamicparam", "else",
-    "elseif", "end", "enum", "exit", "filter", "finally", "for", "foreach", "from",
-    "function", "hidden", "if", "in", "param", "process", "return", "static", "switch",
-    "throw", "trap", "try", "until", "using", "while", "workflow", "true", "false", "null",
+    "begin",
+    "break",
+    "catch",
+    "class",
+    "continue",
+    "data",
+    "do",
+    "dynamicparam",
+    "else",
+    "elseif",
+    "end",
+    "enum",
+    "exit",
+    "filter",
+    "finally",
+    "for",
+    "foreach",
+    "from",
+    "function",
+    "hidden",
+    "if",
+    "in",
+    "param",
+    "process",
+    "return",
+    "static",
+    "switch",
+    "throw",
+    "trap",
+    "try",
+    "until",
+    "using",
+    "while",
+    "workflow",
+    "true",
+    "false",
+    "null",
 ];
 
 /// JSON, YAML, TOML and friends: no keywords to speak of, just their literals.
 const KW_DATA: &[&str] = &["true", "false", "null", "yes", "no", "on", "off", "none"];
 
-const KW_CSS: &[&str] = &["and", "important", "from", "to", "media", "supports", "keyframes", "not", "only"];
+const KW_CSS: &[&str] = &[
+    "and",
+    "important",
+    "from",
+    "to",
+    "media",
+    "supports",
+    "keyframes",
+    "not",
+    "only",
+];
 
 /// The profile for a fence's language tag, or None for a language we do not
 /// know — those blocks are left exactly as the renderer emitted them.
@@ -919,8 +1143,8 @@ fn code_token(code: &str, i: usize, language: &Language) -> Option<(usize, Optio
         }
     }
     if let Some((open, close)) = language.block_comment {
-        if rest.starts_with(open) {
-            let end = rest[open.len()..]
+        if let Some(after) = rest.strip_prefix(open) {
+            let end = after
                 .find(close)
                 .map(|n| i + open.len() + n + close.len())
                 .unwrap_or(code.len());
@@ -1004,7 +1228,10 @@ fn char_len(code: &str, i: usize) -> usize {
 
 fn is_keyword(word: &str, language: &Language) -> bool {
     if language.fold_case {
-        language.keywords.iter().any(|kw| kw.eq_ignore_ascii_case(word))
+        language
+            .keywords
+            .iter()
+            .any(|kw| kw.eq_ignore_ascii_case(word))
     } else {
         language.keywords.contains(&word)
     }
@@ -1042,8 +1269,8 @@ fn highlight_markup(code: &str) -> String {
     while i < code.len() {
         let rest = &code[i..];
 
-        if rest.starts_with("<!--") {
-            let end = rest[4..]
+        if let Some(after) = rest.strip_prefix("<!--") {
+            let end = after
                 .find("-->")
                 .map(|n| i + 4 + n + 3)
                 .unwrap_or(code.len());
@@ -1149,7 +1376,10 @@ fn load_document(path: &Path) -> Document {
                 name: file_name(path),
                 dir,
                 html,
-                size: metadata.as_ref().map(|meta| meta.len()).unwrap_or(source.len() as u64),
+                size: metadata
+                    .as_ref()
+                    .map(|meta| meta.len())
+                    .unwrap_or(source.len() as u64),
                 modified: metadata
                     .as_ref()
                     .and_then(|meta| meta.modified().ok())
@@ -1203,9 +1433,12 @@ fn ensure_file_icon() {
     use winreg::enums::{HKEY_CURRENT_USER, KEY_READ, KEY_WRITE};
     use winreg::RegKey;
 
-    let Some(value) = install_file_icon() else { return };
+    let Some(value) = install_file_icon() else {
+        return;
+    };
     let path = format!(r"Software\Classes\{PROG_ID}\DefaultIcon");
-    let Ok(key) = RegKey::predef(HKEY_CURRENT_USER).open_subkey_with_flags(&path, KEY_READ | KEY_WRITE)
+    let Ok(key) =
+        RegKey::predef(HKEY_CURRENT_USER).open_subkey_with_flags(&path, KEY_READ | KEY_WRITE)
     else {
         return;
     };
@@ -1223,7 +1456,9 @@ const APP_NAME: &str = "MD Viewer";
 /// Extensions the in-app action claims. `.txt` is deliberately excluded: the
 /// installer may offer it, but a viewer silently claiming plain-text files is
 /// not a pleasant surprise.
-const CLAIM_EXTENSIONS: &[&str] = &["md", "markdown", "mdown", "mkd", "mkdn", "mdwn", "mdtxt", "mdtext"];
+const CLAIM_EXTENSIONS: &[&str] = &[
+    "md", "markdown", "mdown", "mkd", "mkdn", "mdwn", "mdtxt", "mdtext",
+];
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -1297,14 +1532,14 @@ fn association_target(app: &AppHandle) -> Option<PathBuf> {
 #[cfg(windows)]
 mod shell_default {
     use super::*;
-    use winreg::enums::{HKEY_CURRENT_USER, REG_NONE};
-    use winreg::{RegKey, RegValue};
     use windows::core::PCWSTR;
     use windows::Win32::Foundation::HWND;
     use windows::Win32::UI::Shell::{
         SHChangeNotify, SHOpenWithDialog, OAIF_ALLOW_REGISTRATION, OAIF_REGISTER_EXT, OPENASINFO,
         SHCNE_ASSOCCHANGED, SHCNF_IDLIST,
     };
+    use winreg::enums::{HKEY_CURRENT_USER, REG_NONE};
+    use winreg::{RegKey, RegValue};
 
     fn io(error: std::io::Error) -> String {
         format!("Registry write failed: {error}")
@@ -1349,7 +1584,11 @@ mod shell_default {
         key.set_value(&letter, &exe_name.to_string()).map_err(io)?;
 
         let mut order = vec![letter];
-        for previous in key.get_value::<String, _>("MRUList").unwrap_or_default().chars() {
+        for previous in key
+            .get_value::<String, _>("MRUList")
+            .unwrap_or_default()
+            .chars()
+        {
             let name = previous.to_string();
             if !order.contains(&name) && existing.iter().any(|(value, _)| *value == name) {
                 order.push(name);
@@ -1381,7 +1620,9 @@ mod shell_default {
         let (progid, _) = root
             .create_subkey(format!(r"Software\Classes\{PROG_ID}"))
             .map_err(io)?;
-        progid.set_value("", &"Markdown Document".to_string()).map_err(io)?;
+        progid
+            .set_value("", &"Markdown Document".to_string())
+            .map_err(io)?;
 
         // The file icon is the document one rather than the executable's, since
         // Explorer draws it for every .md. Falls back to the executable's own icon if
@@ -1403,12 +1644,17 @@ mod shell_default {
         let app_path = format!(r"Software\Classes\Applications\{exe_name}");
         let (app, _) = root.create_subkey(&app_path).map_err(io)?;
         app.set_value("", &APP_NAME.to_string()).map_err(io)?;
-        app.set_value("FriendlyAppName", &APP_NAME.to_string()).map_err(io)?;
-        app.set_value("ApplicationName", &APP_NAME.to_string()).map_err(io)?;
-        app.set_value("ApplicationCompany", &APP_NAME.to_string()).map_err(io)?;
+        app.set_value("FriendlyAppName", &APP_NAME.to_string())
+            .map_err(io)?;
+        app.set_value("ApplicationName", &APP_NAME.to_string())
+            .map_err(io)?;
+        app.set_value("ApplicationCompany", &APP_NAME.to_string())
+            .map_err(io)?;
         app.set_value("ApplicationIcon", &icon).map_err(io)?;
 
-        let (app_icon, _) = root.create_subkey(format!(r"{app_path}\DefaultIcon")).map_err(io)?;
+        let (app_icon, _) = root
+            .create_subkey(format!(r"{app_path}\DefaultIcon"))
+            .map_err(io)?;
         app_icon.set_value("", &icon).map_err(io)?;
 
         let (app_command, _) = root
@@ -1420,7 +1666,9 @@ mod shell_default {
             .create_subkey(format!(r"{app_path}\SupportedTypes"))
             .map_err(io)?;
         for ext in CLAIM_EXTENSIONS {
-            supported.set_value(format!(".{ext}"), &String::new()).map_err(io)?;
+            supported
+                .set_value(format!(".{ext}"), &String::new())
+                .map_err(io)?;
         }
 
         for ext in CLAIM_EXTENSIONS {
@@ -1433,7 +1681,10 @@ mod shell_default {
             open_with
                 .set_raw_value(
                     PROG_ID,
-                    &RegValue { bytes: std::borrow::Cow::Borrowed(&[]), vtype: REG_NONE },
+                    &RegValue {
+                        bytes: std::borrow::Cow::Borrowed(&[]),
+                        vtype: REG_NONE,
+                    },
                 )
                 .map_err(io)?;
 
@@ -1444,10 +1695,14 @@ mod shell_default {
         }
 
         let (toasts, _) = root
-            .create_subkey(r"Software\Microsoft\Windows\CurrentVersion\ApplicationAssociationToasts")
+            .create_subkey(
+                r"Software\Microsoft\Windows\CurrentVersion\ApplicationAssociationToasts",
+            )
             .map_err(io)?;
         for ext in CLAIM_EXTENSIONS {
-            toasts.set_value(format!("{exe_name}_{ext}"), &0u32).map_err(io)?;
+            toasts
+                .set_value(format!("{exe_name}_{ext}"), &0u32)
+                .map_err(io)?;
         }
 
         Ok(())
@@ -1552,7 +1807,9 @@ async fn make_default(app: AppHandle) -> Result<DefaultReport, String> {
                 if !shell_default::show_open_with(parent, &path) {
                     let _ = handle.emit(
                         EVENT_NOTICE,
-                        Notice { message: "Windows did not show the picker; use Open with manually." },
+                        Notice {
+                            message: "Windows did not show the picker; use Open with manually.",
+                        },
                     );
                 }
             }
@@ -1583,8 +1840,8 @@ fn default_status() -> DefaultStatus {
         executable: current_program()
             .map(|exe| exe.display().to_string())
             .unwrap_or_default(),
-            extensions: CLAIM_EXTENSIONS.to_vec(),
-            is_default: is_default_progid(shell_default::current_default("md")),
+        extensions: CLAIM_EXTENSIONS.to_vec(),
+        is_default: is_default_progid(shell_default::current_default("md")),
         supported: cfg!(windows),
     }
 }
@@ -1628,7 +1885,11 @@ fn watch_file(app: &AppHandle, path: PathBuf) {
             let wait = if dirty { debounce } else { idle };
             match receiver.recv_timeout(wait) {
                 Ok(Ok(event)) => {
-                    if event.paths.iter().any(|touched| paths_equal(touched, &path)) {
+                    if event
+                        .paths
+                        .iter()
+                        .any(|touched| paths_equal(touched, &path))
+                    {
                         dirty = true;
                     }
                 }
@@ -1656,7 +1917,12 @@ fn watch_file(app: &AppHandle, path: PathBuf) {
 
                     let document = load_document(&path);
                     let _ = app.emit(EVENT_RELOAD, &document);
-                    let _ = app.emit(EVENT_NOTICE, Notice { message: "Reloaded from disk" });
+                    let _ = app.emit(
+                        EVENT_NOTICE,
+                        Notice {
+                            message: "Reloaded from disk",
+                        },
+                    );
                 }
                 Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => return,
             }
@@ -1773,7 +2039,9 @@ async fn open_dialog(app: AppHandle) -> Result<Option<Document>, String> {
             .set_title("Open Markdown file")
             .add_filter(
                 "Markdown",
-                &["md", "markdown", "mdown", "mkd", "mkdn", "mdwn", "mdtxt", "mdtext"],
+                &[
+                    "md", "markdown", "mdown", "mkd", "mkdn", "mdwn", "mdtxt", "mdtext",
+                ],
             )
             .add_filter("Text", &["txt"])
             .blocking_pick_file()
@@ -1802,7 +2070,12 @@ fn open_link(app: AppHandle, href: String) -> LinkOutcome {
     let scheme = href
         .split_once(':')
         .map(|(head, _)| head.to_ascii_lowercase())
-        .filter(|head| head.len() > 1 && head.chars().all(|c| c.is_ascii_alphanumeric() || "+-.".contains(c)));
+        .filter(|head| {
+            head.len() > 1
+                && head
+                    .chars()
+                    .all(|c| c.is_ascii_alphanumeric() || "+-.".contains(c))
+        });
 
     match scheme.as_deref() {
         Some("http") | Some("https") | Some("mailto") | Some("tel") => {
@@ -1852,7 +2125,10 @@ fn open_local(app: &AppHandle, path: &Path, href: String) -> LinkOutcome {
         let document = prepare_document(app, path);
         return LinkOutcome::document(href, document);
     }
-    match app.opener().open_path(path.display().to_string(), None::<&str>) {
+    match app
+        .opener()
+        .open_path(path.display().to_string(), None::<&str>)
+    {
         Ok(()) => LinkOutcome::external(href),
         Err(error) => LinkOutcome::missing(format!("{href} ({error})")),
     }
@@ -1968,7 +2244,9 @@ fn read_geometry(app: &AppHandle) -> Option<Geometry> {
 }
 
 fn write_geometry(app: &AppHandle, geometry: &Geometry) {
-    let Some(path) = geometry_path(app) else { return };
+    let Some(path) = geometry_path(app) else {
+        return;
+    };
     if let Some(dir) = path.parent() {
         let _ = std::fs::create_dir_all(dir);
     }
@@ -1993,7 +2271,9 @@ fn remembering(app: &AppHandle) -> bool {
 }
 
 fn set_remembering(app: &AppHandle, on: bool) {
-    let Some(path) = remember_path(app) else { return };
+    let Some(path) = remember_path(app) else {
+        return;
+    };
     if let Some(dir) = path.parent() {
         let _ = std::fs::create_dir_all(dir);
     }
@@ -2007,7 +2287,9 @@ fn restore_geometry(window: &tauri::WebviewWindow) {
     if !remembering(&app) {
         return;
     }
-    let Some(saved) = read_geometry(&app) else { return };
+    let Some(saved) = read_geometry(&app) else {
+        return;
+    };
 
     let _ = window.set_size(tauri::Size::Logical(tauri::LogicalSize::new(
         saved.width as f64,
@@ -2021,7 +2303,8 @@ fn restore_geometry(window: &tauri::WebviewWindow) {
             let size = monitor.size().to_logical::<f64>(scale);
             let x = saved.x as f64;
             let y = saved.y as f64;
-            x >= origin.x && y >= origin.y
+            x >= origin.x
+                && y >= origin.y
                 && x < origin.x + size.width
                 && y < origin.y + size.height
         })
@@ -2142,7 +2425,9 @@ fn run(startup_path: Option<PathBuf>) {
                     None => {
                         let _ = webview.emit(
                             EVENT_ERROR,
-                            Notice { message: "Nothing to read: drop a file, not a folder." },
+                            Notice {
+                                message: "Nothing to read: drop a file, not a folder.",
+                            },
                         );
                     }
                 }
@@ -2253,15 +2538,30 @@ mod tests {
 
     #[test]
     fn cli_flags_are_recognised() {
-        assert_eq!(classify_args(&args_of(&["mdviewer.exe", "--version"])), StartupAction::Version);
-        assert_eq!(classify_args(&args_of(&["mdviewer.exe", "-V"])), StartupAction::Version);
-        assert_eq!(classify_args(&args_of(&["mdviewer.exe", "--help"])), StartupAction::Help);
-        assert_eq!(classify_args(&args_of(&["mdviewer.exe", "-h"])), StartupAction::Help);
+        assert_eq!(
+            classify_args(&args_of(&["mdviewer.exe", "--version"])),
+            StartupAction::Version
+        );
+        assert_eq!(
+            classify_args(&args_of(&["mdviewer.exe", "-V"])),
+            StartupAction::Version
+        );
+        assert_eq!(
+            classify_args(&args_of(&["mdviewer.exe", "--help"])),
+            StartupAction::Help
+        );
+        assert_eq!(
+            classify_args(&args_of(&["mdviewer.exe", "-h"])),
+            StartupAction::Help
+        );
         assert_eq!(
             classify_args(&args_of(&["mdviewer.exe", "--register-default"])),
             StartupAction::RegisterDefault
         );
-        assert_eq!(classify_args(&args_of(&["mdviewer.exe"])), StartupAction::Gui(None));
+        assert_eq!(
+            classify_args(&args_of(&["mdviewer.exe"])),
+            StartupAction::Gui(None)
+        );
     }
 
     #[test]
@@ -2296,7 +2596,14 @@ mod tests {
     fn decoding_handles_boms() {
         assert_eq!(decode_text(b"\xEF\xBB\xBFhello"), "hello");
 
-        let utf16le = [&[0xFF, 0xFE][..], &"hi".encode_utf16().flat_map(u16::to_le_bytes).collect::<Vec<u8>>()].concat();
+        let utf16le = [
+            &[0xFF, 0xFE][..],
+            &"hi"
+                .encode_utf16()
+                .flat_map(u16::to_le_bytes)
+                .collect::<Vec<u8>>(),
+        ]
+        .concat();
         assert_eq!(decode_text(&utf16le), "hi");
 
         assert_eq!(decode_text("plain".as_bytes()), "plain");
@@ -2344,12 +2651,21 @@ footnote[^1]
         // link to them; the renderer itself emits a plain <h1>.
         assert!(html.contains("<h1>Heading</h1>"), "heading: {html}");
         assert!(html.contains("<table>"), "table: {html}");
-        assert!(html.contains("type=\"checkbox\" checked"), "task list: {html}");
+        assert!(
+            html.contains("type=\"checkbox\" checked"),
+            "task list: {html}"
+        );
         assert!(html.contains("<del>struck</del>"), "strikethrough: {html}");
-        assert!(html.contains("href=\"https://example.com\""), "link: {html}");
+        assert!(
+            html.contains("href=\"https://example.com\""),
+            "link: {html}"
+        );
         assert!(html.contains("markdown-alert-note"), "alert class: {html}");
         assert!(html.contains("footnote-definition"), "footnote: {html}");
-        assert!(!html.contains("hidden frontmatter"), "frontmatter should be dropped");
+        assert!(
+            !html.contains("hidden frontmatter"),
+            "frontmatter should be dropped"
+        );
     }
 
     #[test]
@@ -2423,18 +2739,41 @@ footnote[^1]
         );
         let html = render_markdown_in(source, Some(&dir));
 
-        assert!(html.contains("alt=\"shot\" width=\"640\" height=\"480\""), "png: {html}");
-        assert!(html.contains("alt=\"photo\" width=\"320\" height=\"200\""), "jpeg: {html}");
-        assert!(html.contains("alt=\"anim\" width=\"64\" height=\"32\""), "gif: {html}");
-        assert!(html.contains("alt=\"pic\" width=\"100\" height=\"50\""), "webp: {html}");
+        assert!(
+            html.contains("alt=\"shot\" width=\"640\" height=\"480\""),
+            "png: {html}"
+        );
+        assert!(
+            html.contains("alt=\"photo\" width=\"320\" height=\"200\""),
+            "jpeg: {html}"
+        );
+        assert!(
+            html.contains("alt=\"anim\" width=\"64\" height=\"32\""),
+            "gif: {html}"
+        );
+        assert!(
+            html.contains("alt=\"pic\" width=\"100\" height=\"50\""),
+            "webp: {html}"
+        );
         assert!(
             html.contains("alt=\"spaced\" width=\"640\" height=\"480\""),
             "escaped path: {html}"
         );
         // Five decodable local images, plus the author's own width/height pair.
-        assert_eq!(html.matches("width=\"").count(), 6, "width attrs in:\n{html}");
-        assert_eq!(html.matches("height=\"").count(), 6, "height attrs in:\n{html}");
-        assert!(html.contains("width=\"10\" height=\"10\""), "author values kept: {html}");
+        assert_eq!(
+            html.matches("width=\"").count(),
+            6,
+            "width attrs in:\n{html}"
+        );
+        assert_eq!(
+            html.matches("height=\"").count(),
+            6,
+            "height attrs in:\n{html}"
+        );
+        assert!(
+            html.contains("width=\"10\" height=\"10\""),
+            "author values kept: {html}"
+        );
 
         let _ = std::fs::remove_dir_all(&dir);
     }
@@ -2454,7 +2793,10 @@ footnote[^1]
     fn the_file_icon_is_embedded_and_installable() {
         assert!(FILE_ICON.len() > 1000, "the document icon looks empty");
         let value = install_file_icon().expect("write the document icon");
-        assert!(value.starts_with('"') && value.ends_with("\",0"), "value shape: {value}");
+        assert!(
+            value.starts_with('"') && value.ends_with("\",0"),
+            "value shape: {value}"
+        );
 
         let file = value.trim_start_matches('"').trim_end_matches("\",0");
         assert!(file.ends_with("markdown.ico"), "icon path: {file}");
@@ -2466,10 +2808,18 @@ footnote[^1]
     /// rename would silently throw away everyone's saved window.
     #[test]
     fn window_geometry_round_trips_through_json() {
-        let saved = Geometry { x: -1280, y: 40, width: 900, height: 780 };
+        let saved = Geometry {
+            x: -1280,
+            y: 40,
+            width: 900,
+            height: 780,
+        };
         let text = serde_json::to_string(&saved).unwrap();
         let parsed: Geometry = serde_json::from_str(&text).unwrap();
-        assert_eq!(parsed.x, -1280, "a monitor to the left is a negative origin");
+        assert_eq!(
+            parsed.x, -1280,
+            "a monitor to the left is a negative origin"
+        );
         assert_eq!(parsed.y, 40);
         assert_eq!(parsed.width, 900);
         assert_eq!(parsed.height, 780);
@@ -2480,12 +2830,21 @@ footnote[^1]
     /// a language we do not know is left exactly as the renderer wrote it.
     #[test]
     fn fenced_code_is_highlighted() {
-        let html = render_markdown_in("```rust\n// note\nfn main() { let x = \"hi\"; }\n```\n", None);
-        assert!(html.contains("<span class=\"tok-c\">// note</span>"), "{html}");
+        let html = render_markdown_in(
+            "```rust\n// note\nfn main() { let x = \"hi\"; }\n```\n",
+            None,
+        );
+        assert!(
+            html.contains("<span class=\"tok-c\">// note</span>"),
+            "{html}"
+        );
         assert!(html.contains("<span class=\"tok-k\">fn</span>"), "{html}");
         assert!(html.contains("<span class=\"tok-k\">let</span>"), "{html}");
         // A double quote in text needs no escaping, so the sanitiser leaves it raw.
-        assert!(html.contains("<span class=\"tok-s\">\"hi\"</span>"), "{html}");
+        assert!(
+            html.contains("<span class=\"tok-s\">\"hi\"</span>"),
+            "{html}"
+        );
         assert!(html.contains("class=\"language-rust\""), "{html}");
         // Identifiers and punctuation are not wrapped.
         assert!(html.contains(" main()"), "{html}");
@@ -2505,16 +2864,28 @@ footnote[^1]
         assert!(html.contains("<span class=\"tok-a\">href</span>"), "{html}");
         // The tag's own angle brackets are code text, so they leave escaped.
         assert!(html.contains("&lt;") && html.contains("&gt;"), "{html}");
-        assert!(html.contains("&amp;amp;"), "the ampersand must stay escaped: {html}");
+        assert!(
+            html.contains("&amp;amp;"),
+            "the ampersand must stay escaped: {html}"
+        );
 
-        let injected = render_markdown_in("```js\nlet s = \"<img src=x onerror=alert(1)>\";\n```\n", None);
-        assert!(!injected.contains("<img"), "markup from inside code leaked: {injected}");
+        let injected = render_markdown_in(
+            "```js\nlet s = \"<img src=x onerror=alert(1)>\";\n```\n",
+            None,
+        );
+        assert!(
+            !injected.contains("<img"),
+            "markup from inside code leaked: {injected}"
+        );
     }
 
     #[test]
     fn sql_keywords_ignore_case() {
         let html = render_markdown_in("```sql\nSELECT id FROM t WHERE x = 1\n```\n", None);
-        assert!(html.contains("<span class=\"tok-k\">SELECT</span>"), "{html}");
+        assert!(
+            html.contains("<span class=\"tok-k\">SELECT</span>"),
+            "{html}"
+        );
         assert!(html.contains("<span class=\"tok-k\">FROM</span>"), "{html}");
         assert!(html.contains("<span class=\"tok-n\">1</span>"), "{html}");
     }
@@ -2524,39 +2895,73 @@ footnote[^1]
         let source = "```python\ndef f():\n    '''doc'''  # trailing\n    return \"x\"\n```\n";
         let html = render_markdown_in(source, None);
         assert!(html.contains("<span class=\"tok-k\">def</span>"), "{html}");
-        assert!(html.contains("<span class=\"tok-s\">'''doc'''</span>"), "{html}");
-        assert!(html.contains("<span class=\"tok-c\"># trailing</span>"), "{html}");
+        assert!(
+            html.contains("<span class=\"tok-s\">'''doc'''</span>"),
+            "{html}"
+        );
+        assert!(
+            html.contains("<span class=\"tok-c\"># trailing</span>"),
+            "{html}"
+        );
     }
 
     /// PowerShell is what a Windows project's own docs reach for, so the fence
     /// tag has to be known (its backtick is an escape, not a quote delimiter).
     #[test]
     fn powershell_fences_are_highlighted() {
-        let source = "```powershell\n# note\nfunction Get-Thing { param($name) return \"$name\" }\n```\n";
+        let source =
+            "```powershell\n# note\nfunction Get-Thing { param($name) return \"$name\" }\n```\n";
         let html = render_markdown_in(source, None);
-        assert!(html.contains("<span class=\"tok-c\"># note</span>"), "{html}");
-        assert!(html.contains("<span class=\"tok-k\">function</span>"), "{html}");
-        assert!(html.contains("<span class=\"tok-k\">param</span>"), "{html}");
-        assert!(html.contains("<span class=\"tok-k\">return</span>"), "{html}");
+        assert!(
+            html.contains("<span class=\"tok-c\"># note</span>"),
+            "{html}"
+        );
+        assert!(
+            html.contains("<span class=\"tok-k\">function</span>"),
+            "{html}"
+        );
+        assert!(
+            html.contains("<span class=\"tok-k\">param</span>"),
+            "{html}"
+        );
+        assert!(
+            html.contains("<span class=\"tok-k\">return</span>"),
+            "{html}"
+        );
     }
 
     /// Type names are keywords in the C family, and they are most of what makes a
     /// C or Java block look highlighted at all.
     #[test]
     fn c_family_types_are_keywords() {
-        let html = render_markdown_in("```c\nint main(void) { char c = 'x'; return 0; }\n```\n", None);
+        let html = render_markdown_in(
+            "```c\nint main(void) { char c = 'x'; return 0; }\n```\n",
+            None,
+        );
         assert!(html.contains("<span class=\"tok-k\">int</span>"), "{html}");
         assert!(html.contains("<span class=\"tok-k\">char</span>"), "{html}");
-        assert!(html.contains("<span class=\"tok-k\">return</span>"), "{html}");
+        assert!(
+            html.contains("<span class=\"tok-k\">return</span>"),
+            "{html}"
+        );
     }
 
     #[test]
     fn table_alignment_is_emitted_as_classes() {
         let html = render_markdown_in("| a | b |\n| :- | -: |\n| 1 | 2 |\n", None);
         // Inline styles are blocked by the app's CSP, so alignment is a class.
-        assert!(html.contains("class=\"align-left\""), "left alignment: {html}");
-        assert!(html.contains("class=\"align-right\""), "right alignment: {html}");
-        assert!(!html.contains("style="), "no inline styles may survive: {html}");
+        assert!(
+            html.contains("class=\"align-left\""),
+            "left alignment: {html}"
+        );
+        assert!(
+            html.contains("class=\"align-right\""),
+            "right alignment: {html}"
+        );
+        assert!(
+            !html.contains("style="),
+            "no inline styles may survive: {html}"
+        );
     }
 
     #[test]
@@ -2598,20 +3003,26 @@ footnote[^1]
     #[test]
     fn default_progid_matching_ignores_case() {
         assert!(is_default_progid(Some("mdviewer.markdown".to_string())));
-        assert!(!is_default_progid(Some(r"Applications\notepad.exe".to_string())));
+        assert!(!is_default_progid(Some(
+            r"Applications\notepad.exe".to_string()
+        )));
         assert!(!is_default_progid(None));
     }
 
     #[test]
-    fn claimed_extensions_are_bare_and_renderable() {        assert!(CLAIM_EXTENSIONS.contains(&"md"));
+    fn claimed_extensions_are_bare_and_renderable() {
+        assert!(CLAIM_EXTENSIONS.contains(&"md"));
         assert!(CLAIM_EXTENSIONS.iter().all(|ext| !ext.starts_with('.')));
-        assert!(CLAIM_EXTENSIONS.iter().all(|ext| is_markdown(Path::new(&format!("file.{ext}")))));
+        assert!(CLAIM_EXTENSIONS
+            .iter()
+            .all(|ext| is_markdown(Path::new(&format!("file.{ext}")))));
         // A viewer should not claim plain text as its own type.
         assert!(!CLAIM_EXTENSIONS.contains(&"txt"));
     }
 
     #[test]
-    fn filter_existing_keeps_only_real_files() {        let real = temp_file("filter-existing.md", b"# hi");
+    fn filter_existing_keeps_only_real_files() {
+        let real = temp_file("filter-existing.md", b"# hi");
         let missing = std::env::temp_dir().join("mdviewer-definitely-missing-77.md");
         let kept = filter_existing(vec![
             real.display().to_string(),
@@ -2686,12 +3097,19 @@ footnote[^1]
     #[cfg(windows)]
     #[test]
     fn open_with_dialog_arguments_are_correct() {
-        assert_eq!(shell_default::open_with_flag_bits(), 3, "OAIF_ALLOW_REGISTRATION | OAIF_REGISTER_EXT");
+        assert_eq!(
+            shell_default::open_with_flag_bits(),
+            3,
+            "OAIF_ALLOW_REGISTRATION | OAIF_REGISTER_EXT"
+        );
 
         let wide = shell_default::wide_null_for_test(r"C:\notes\a.md");
         assert_eq!(wide.last(), Some(&0), "must be NUL terminated");
         assert_eq!(wide.len(), r"C:\notes\a.md".encode_utf16().count() + 1);
-        assert_eq!(String::from_utf16(&wide[..wide.len() - 1]).unwrap(), r"C:\notes\a.md");
+        assert_eq!(
+            String::from_utf16(&wide[..wide.len() - 1]).unwrap(),
+            r"C:\notes\a.md"
+        );
     }
 
     /// Exercises the real registration path against the current user's registry
@@ -2714,7 +3132,11 @@ footnote[^1]
 
         // The test binary has its own file name, so derive the key from the
         // running executable rather than assuming "mdviewer.exe".
-        let exe_name = exe.file_name().expect("file name").to_string_lossy().into_owned();
+        let exe_name = exe
+            .file_name()
+            .expect("file name")
+            .to_string_lossy()
+            .into_owned();
 
         let root = RegKey::predef(HKEY_CURRENT_USER);
 
