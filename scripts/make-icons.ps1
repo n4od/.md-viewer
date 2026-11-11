@@ -87,6 +87,91 @@ function New-MarkBitmap {
     return $bmp
 }
 
+function New-DocumentBitmap {
+    param([int]$Size)
+
+    # The file-type icon: a page rather than the app tile, because Explorer draws it
+    # for every .md file. Same palette and the same serif M.
+    $bmp = New-Object System.Drawing.Bitmap($Size, $Size, [System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
+    $g = [System.Drawing.Graphics]::FromImage($bmp)
+    $g.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
+    $g.TextRenderingHint = [System.Drawing.Text.TextRenderingHint]::AntiAliasGridFit
+    $g.Clear([System.Drawing.Color]::Transparent)
+
+    $paper = [System.Drawing.Color]::FromArgb(255, 251, 250, 247)
+    $foldShade = [System.Drawing.Color]::FromArgb(255, 233, 228, 217)
+    $edge = [System.Drawing.Color]::FromArgb(255, 152, 145, 132)
+    $paperInk = [System.Drawing.Color]::FromArgb(255, 32, 36, 42)
+
+    $w = [single]($Size * 0.76)
+    $h = [single]($Size * 0.92)
+    $x = [single](($Size - $w) / 2)
+    $y = [single](($Size - $h) / 2)
+    $fold = [single]($Size * 0.24)
+
+    # Page outline: a straight page with the top-right corner cut away.
+    $path = New-Object System.Drawing.Drawing2D.GraphicsPath
+    $path.AddLine($x, $y, ($x + $w - $fold), $y)
+    $path.AddLine(($x + $w - $fold), $y, ($x + $w), ($y + $fold))
+    $path.AddLine(($x + $w), ($y + $fold), ($x + $w), ($y + $h))
+    $path.AddLine(($x + $w), ($y + $h), $x, ($y + $h))
+    $path.CloseFigure()
+
+    $paperBrush = New-Object System.Drawing.SolidBrush($paper)
+    $g.FillPath($paperBrush, $path)
+    $pen = New-Object System.Drawing.Pen($edge, [single][Math]::Max(1.0, $Size / 96.0))
+    $g.DrawPath($pen, $path)
+
+    # The fold itself, shaded so the corner reads as folded rather than clipped.
+    $foldPath = New-Object System.Drawing.Drawing2D.GraphicsPath
+    $foldPath.AddLine(($x + $w - $fold), $y, ($x + $w - $fold), ($y + $fold))
+    $foldPath.AddLine(($x + $w - $fold), ($y + $fold), ($x + $w), ($y + $fold))
+    $foldPath.CloseFigure()
+    $foldBrush = New-Object System.Drawing.SolidBrush($foldShade)
+    $g.FillPath($foldBrush, $foldPath)
+    $g.DrawPath($pen, $foldPath)
+
+    # The mark, centred on the page. Ink on paper, unlike the app tile.
+    $family = $null
+    foreach ($name in @('Iowan Old Style', 'Georgia', 'Times New Roman', 'DejaVu Serif', 'serif')) {
+        try {
+            $family = New-Object System.Drawing.FontFamily($name)
+            if ($family -ne $null) { break }
+        } catch { $family = $null }
+    }
+    if ($family -eq $null) { $family = [System.Drawing.FontFamily]::GenericSerif }
+
+    $fontSize = [single]($Size * 0.50)
+    $font = New-Object System.Drawing.Font($family, $fontSize, [System.Drawing.FontStyle]::Bold, [System.Drawing.GraphicsUnit]::Pixel)
+    $format = New-Object System.Drawing.StringFormat
+    $format.Alignment = [System.Drawing.StringAlignment]::Center
+    $format.LineAlignment = [System.Drawing.StringAlignment]::Center
+    $inkBrush = New-Object System.Drawing.SolidBrush($paperInk)
+    $textRect = New-Object System.Drawing.RectangleF($x, [single]($y + $h * 0.06), $w, [single]($h * 0.78))
+    $g.DrawString('M', $font, $inkBrush, $textRect, $format)
+
+    # Accent caret under the mark, the same "cursor" as the app icon. Skipped at 16px,
+    # where a bar that thin would just be noise.
+    if ($Size -ge 32) {
+        $barW = [single]($Size * 0.20)
+        $barH = [single]($Size * 0.045)
+        $barX = [single](($Size - $barW) / 2)
+        $barY = [single]($y + $h * 0.76)
+        $accentBrush = New-Object System.Drawing.SolidBrush([System.Drawing.Color]::FromArgb(255, 14, 109, 97))
+        $g.FillRectangle($accentBrush, $barX, $barY, $barW, $barH)
+        $accentBrush.Dispose()
+    }
+
+    $inkBrush.Dispose()
+    $paperBrush.Dispose()
+    $foldBrush.Dispose()
+    $pen.Dispose()
+    $font.Dispose()
+    $format.Dispose()
+    $g.Dispose()
+    return $bmp
+}
+
 function Save-Png {
     param([System.Drawing.Bitmap]$Bitmap, [string]$Path, [int]$Size)
     $scaled = New-Object System.Drawing.Bitmap($Size, $Size, [System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
@@ -127,45 +212,57 @@ Save-Png -Bitmap $master -Path (Join-Path $OutDir '128x128.png') -Size 128
 Save-Png -Bitmap $master -Path (Join-Path $OutDir '128x128@2x.png') -Size 256
 Save-Png -Bitmap $master -Path (Join-Path $OutDir 'icon-512.png') -Size 512
 
-# Multi-resolution .ico (PNG-compressed entries, Vista and newer).
-$sizes = @(16, 24, 32, 48, 64, 128, 256)
-$images = @()
-foreach ($size in $sizes) {
-    $bytes = New-PngBytes -Bitmap $master -Size $size
-    $images += [pscustomobject]@{ Size = $size; Bytes = [byte[]]$bytes }
+function Save-Ico {
+    param([System.Drawing.Bitmap]$Bitmap, [string]$Path)
+
+    # Multi-resolution .ico, PNG-compressed entries (Vista and newer).
+    $sizes = @(16, 24, 32, 48, 64, 128, 256)
+    $images = @()
+    foreach ($size in $sizes) {
+        $bytes = New-PngBytes -Bitmap $Bitmap -Size $size
+        $images += [pscustomobject]@{ Size = $size; Bytes = [byte[]]$bytes }
+    }
+
+    $file = [System.IO.File]::Create($Path)
+    $writer = New-Object System.IO.BinaryWriter($file)
+
+    # ICONDIR
+    $writer.Write([UInt16]0)                 # reserved
+    $writer.Write([UInt16]1)                 # type: icon
+    $writer.Write([UInt16]$images.Count)     # image count
+
+    $offset = 6 + (16 * $images.Count)
+    foreach ($image in $images) {
+        $dim = 0
+        if ($image.Size -lt 256) { $dim = $image.Size }
+        $writer.Write([Byte]$dim)                    # width (0 means 256)
+        $writer.Write([Byte]$dim)                    # height (0 means 256)
+        $writer.Write([Byte]0)                       # palette count
+        $writer.Write([Byte]0)                       # reserved
+        $writer.Write([UInt16]1)                     # colour planes
+        $writer.Write([UInt16]32)                    # bits per pixel
+        $writer.Write([UInt32]$image.Bytes.Length)   # size of image data
+        $writer.Write([UInt32]$offset)               # offset of image data
+        $offset += $image.Bytes.Length
+    }
+    foreach ($image in $images) {
+        $writer.Write($image.Bytes)
+    }
+
+    $writer.Flush()
+    $writer.Dispose()
+    $file.Dispose()
+    Write-Host ((Split-Path -Leaf $Path) + " bytes: " + (Get-Item $Path).Length)
 }
 
-$iconPath = Join-Path $OutDir 'icon.ico'
-$file = [System.IO.File]::Create($iconPath)
-$writer = New-Object System.IO.BinaryWriter($file)
+Save-Ico -Bitmap $master -Path (Join-Path $OutDir 'icon.ico')
 
-# ICONDIR
-$writer.Write([UInt16]0)                 # reserved
-$writer.Write([UInt16]1)                 # type: icon
-$writer.Write([UInt16]$images.Count)     # image count
+# The file-type icon, which is what Explorer draws for a .md document. It ships
+# inside the binary so registration can write it out; see `FILE_ICON` in main.rs.
+$document = New-DocumentBitmap -Size 256
+Save-Ico -Bitmap $document -Path (Join-Path $OutDir 'markdown.ico')
+$document.Dispose()
 
-$offset = 6 + (16 * $images.Count)
-foreach ($image in $images) {
-    $dim = 0
-    if ($image.Size -lt 256) { $dim = $image.Size }
-    $writer.Write([Byte]$dim)                    # width (0 means 256)
-    $writer.Write([Byte]$dim)                    # height (0 means 256)
-    $writer.Write([Byte]0)                       # palette count
-    $writer.Write([Byte]0)                       # reserved
-    $writer.Write([UInt16]1)                     # colour planes
-    $writer.Write([UInt16]32)                    # bits per pixel
-    $writer.Write([UInt32]$image.Bytes.Length)   # size of image data
-    $writer.Write([UInt32]$offset)               # offset of image data
-    $offset += $image.Bytes.Length
-}
-foreach ($image in $images) {
-    $writer.Write($image.Bytes)
-}
-
-$writer.Flush()
-$writer.Dispose()
-$file.Dispose()
-Write-Host ("icon.ico bytes: " + (Get-Item $iconPath).Length)
 $master.Dispose()
 
 Write-Host "Icons written to $OutDir"

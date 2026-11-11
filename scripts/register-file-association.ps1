@@ -51,8 +51,21 @@ function New-Key([string]$Path) {
 New-Key "HKCU:\Software\Classes\$progId"
 Set-ItemProperty "HKCU:\Software\Classes\$progId" -Name '(Default)' -Value $description
 
+# Explorer draws this icon for every Markdown file, so it is the document artwork
+# rather than the executable's. Written beside the app's other per-user state, and
+# falling back to the executable's own icon if that cannot be done.
+$iconDir  = Join-Path $env:LOCALAPPDATA 'mdviewer'
+$iconPath = Join-Path $iconDir 'markdown.ico'
+$iconSrc  = Join-Path $PSScriptRoot '..\src-tauri\icons\markdown.ico'
+if (Test-Path $iconSrc) {
+    New-Item -ItemType Directory -Force -Path $iconDir | Out-Null
+    Copy-Item $iconSrc $iconPath -Force
+}
+$iconValue = "`"$ExePath`",0"
+if (Test-Path $iconPath) { $iconValue = "`"$iconPath`",0" }
+
 New-Key "HKCU:\Software\Classes\$progId\DefaultIcon"
-Set-ItemProperty "HKCU:\Software\Classes\$progId\DefaultIcon" -Name '(Default)' -Value "`"$ExePath`",0"
+Set-ItemProperty "HKCU:\Software\Classes\$progId\DefaultIcon" -Name '(Default)' -Value $iconValue
 
 New-Key "HKCU:\Software\Classes\$progId\shell\open\command"
 Set-ItemProperty "HKCU:\Software\Classes\$progId\shell\open\command" -Name '(Default)' -Value "`"$ExePath`" `"%1`""

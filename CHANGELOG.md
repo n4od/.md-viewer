@@ -7,6 +7,18 @@ the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **A document icon for Markdown files.** Explorer used to draw the app tile for every
+  `.md`, which made a folder of notes look like a folder of applications. Markdown
+  files now get a page with a folded corner, in the same palette, the same serif "M"
+  and the same accent caret as the app icon. The artwork travels inside the binary and
+  is written beside the app's other per-user state, so a portable copy gets it too —
+  and the "Open with" entry keeps the app icon, because that row is the app rather
+  than the file.
+- The installer's own registration still points at the executable until the app has
+  run once; the first launch corrects it quietly. Nothing to do by hand.
+
 ## [0.3.3] - 2026-11-11
 
 ### Added

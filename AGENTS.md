@@ -124,6 +124,16 @@ backend is one Rust file. Windows is the only exercised target.
 - The "Open with" list is built from
   `HKCU\Software\Classes\Applications\<exe>`. Without `FriendlyAppName` the entry
   renders blank (or is dropped), which looks like the registration failed.
+- **The file-type icon is not the app icon.** Windows draws a document's icon from
+  its ProgId, so `MDViewer.Markdown\DefaultIcon` points at
+  `%LOCALAPPDATA%\mdviewer\markdown.ico` — artwork carried in the binary
+  (`FILE_ICON`, from `scripts/make-icons.ps1`) and written out at registration, which
+  is what lets a portable copy have it too. `Applications\mdviewer.exe\DefaultIcon`
+  deliberately keeps the *app* icon, because that row represents the app in the
+  picker. Tauri's installer writes the executable's icon on the ProgId, so
+  `ensure_file_icon()` quietly corrects it once on the first launch; the ignored
+  registry test and `register-file-association.ps1` both do the same, and the
+  `.txt` ProgId (installer-only) keeps the app icon for the same picker reason.
 - `Explorer\FileExts\<ext>\OpenWithList` is a letter-keyed MRU; `MRUList` holds
   the order. **Merge, never overwrite** — both the Rust and PowerShell paths do.
 - `assoc`/`ftype` only read the machine hive, so they show nothing for this

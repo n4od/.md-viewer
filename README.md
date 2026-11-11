@@ -519,7 +519,7 @@ caveats that always apply to a fresh Windows instance:
 | Outline | `Ctrl+B` opens the drawer, the current section is highlighted while scrolling. |
 | Empty/error states | Open a file, then rename it on disk and press `F5` → an inline error, the app stays usable. |
 | Command line | `src-tauri\target\release\mdviewer.exe --version` prints `mdviewer 0.3.3`; `--register-default` exits 0 and points the `MDViewer.Markdown` ProgId at that executable. |
-| Tests | `cd src-tauri; cargo test` → 32 tests over argument parsing and CLI flags, decoding, rendering, sanitising, alignment, image sizing, syntax highlighting, window geometry, recent-file filtering, installer/config consistency and render speed, plus one opt-in registry test. |
+| Tests | `cd src-tauri; cargo test` → 33 tests over argument parsing and CLI flags, decoding, rendering, sanitising, alignment, image sizing, syntax highlighting, window geometry, the embedded file icon, recent-file filtering, installer/config consistency and render speed, plus one opt-in registry test. |
 
 ### Troubleshooting
 
