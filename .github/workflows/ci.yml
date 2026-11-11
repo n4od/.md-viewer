@@ -24,15 +24,15 @@ jobs:
 
       # The frontend is three static files with no dependencies. This keeps it that
       # way: if a change needs more room, raise the budget deliberately in review.
-      # Raised from 80/46 KB after the 0.2.0 batch took the frontend from 60.7 KB at
-      # v0.1.1 to 82.2 KB of dependency-free code; the ceiling still rules out a
-      # bundler or a framework.
+      # Raised 80/46 -> 88/52 after the 0.2.0 batch, then 88/52 -> 96/56 once tabs,
+      # the pinned section title and the image lightbox were in. Still far below what
+      # a bundler or a framework would cost, which is what the ceiling is for.
       - name: Frontend size budget
         working-directory: .
         shell: pwsh
         run: |
-          $totalBudget = 88KB
-          $jsBudget    = 52KB
+          $totalBudget = 96KB
+          $jsBudget    = 56KB
           $total = (Get-ChildItem src -File | Measure-Object -Property Length -Sum).Sum
           $js    = (Get-Item src/app.js).Length
           'src/ total {0:N1} KB of {1:N0} KB; app.js {2:N1} KB of {3:N0} KB' -f `

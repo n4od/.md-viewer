@@ -7,6 +7,25 @@ the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **A pinned section title.** While a document is open, the section the scroll-spy
+  says you are in stays visible under the toolbar, so a long file keeps its place.
+  It shows the document name until a section has been picked.
+- **An image lightbox.** An image in the article is capped at the article's width,
+  which makes a screenshot hard to read; clicking one now shows it at full size over
+  a dimmed backdrop. Esc, the close button or a click on the backdrop dismisses it.
+- **The window reopens where you left it.** Size and position are saved when the
+  window closes and restored on the next launch, in logical pixels so a DPI change
+  does not resize it. A position that no longer lands on a monitor is ignored, so
+  unplugging a display cannot strand the window off-screen.
+
+### Changed
+
+- The CI frontend size budget moves from 88/52 KB to 96/56 KB (`src/` total and
+  `app.js`): tabs, the pinned title and the lightbox took the frontend past the old
+  ceiling. The guard still rules out a bundler or a framework.
+
 ## [0.3.1] - 2026-11-11
 
 ### Added

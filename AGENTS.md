@@ -31,8 +31,9 @@ backend is one Rust file. Windows is the only exercised target.
   `npm.cmd` / `npx.cmd`, and note `node_modules` is absent, so `npm run ...`
   needs `npm install` first.
 - CI lives in `.github/workflows/ci.yml` (windows-latest: a **frontend size budget**
-  — `src/` ≤ 88 KB, `app.js` ≤ 52 KB, raised from 80/46 KB when the 0.2.0 batch
-  reached the old ceiling — then `cargo check --all-targets`, then
+  — `src/` ≤ 96 KB, `app.js` ≤ 56 KB, raised from 80/46 KB when the 0.2.0 batch
+  reached that ceiling and again to 96/56 after tabs, the pinned section title and
+  the image lightbox — then `cargo check --all-targets`, then
   `cargo test`). There is still no lint/format/typecheck config — don't invent
   `npm run lint`; `cargo check` + tests are the gate. The size budget is the guard
   behind "three static files, no framework": if a change needs more room, raise it
@@ -160,7 +161,8 @@ backend is one Rust file. Windows is the only exercised target.
   PowerShell script.
 - **Testing the installer mutates shared state.** It overwrites the
   `MDViewer.Markdown` keys the portable build depends on, and the uninstall hook
-  deletes `%LOCALAPPDATA%\mdviewer` (theme + recent files). Export the
+  deletes `%LOCALAPPDATA%\mdviewer` (theme, recent files and the remembered window
+  geometry — `window.json`, written next to the WebView2 profile). Export the
   HKCU keys first if they matter, and re-run
   `scripts\register-file-association.ps1 -SetDefault` afterwards.
 - The bundle identifier is `mdviewer` (was `dev.mdviewer.app`, which made the CLI

@@ -110,10 +110,9 @@ sat under *Not planned* until now — and the multiple-window half stays decline
 - [x] **Not doing**: multiple windows — the same feature at N times the memory, and
       it would undo the single-instance behaviour.
 
-## Phase 4 — exploring
+## Phase 4 — exploring (done)
 
-Ideas, not commitments: each one wants a decision before it is built. The item
-marked done is the one that has been through that.
+Ideas that were proposed, decided and built. New ones would start here.
 
 - [x] **Syntax highlighting** for fenced code, done in Rust on the render path: a
       small tokeniser for the languages a note is likely to use (Rust, JS/TS,
@@ -122,15 +121,17 @@ marked done is the one that has been through that.
       work; unknown languages are left untouched. Measured cost on a code-heavy
       document: ~26% more render time and ~15% more payload. Every token colour
       measures at least 4.5:1 against the code background in both themes.
-- [ ] **Sticky current heading**: keep the section you are reading in view under the
-      topbar, so a long document keeps its place instead of losing it on every
-      scroll. Needs no new state — the scroll-spy already knows the active heading.
-- [ ] **Image lightbox**: click an image to see it full size instead of at the
-      article's width, and close it with Esc or a click. Matters for screenshots in
-      notes, which are usually downscaled to fit.
-- [ ] **Remember window size and position**: reopen at the size and place you last
-      left the window rather than at the configured default. Rust-side, stored
-      alongside the reading positions.
+- [x] **Sticky current heading**: keep the section you are reading in view under the
+      toolbar, so a long document keeps its place instead of losing it on every
+      scroll. The scroll-spy already knows the active heading, so it only has to
+      write it.
+- [x] **Image lightbox**: click an image to see it full size instead of at the
+      article's width, and close it with Esc, the close button or a click on the
+      backdrop. Matters for screenshots in notes, which are usually downscaled.
+- [x] **Remember window size and position**: reopen at the size and place you last
+      left the window rather than at the configured default. Saved as logical pixels
+      next to the WebView2 profile, and ignored if that spot is no longer on a
+      monitor.
 
 ## Not planned
 

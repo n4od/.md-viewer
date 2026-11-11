@@ -19,7 +19,7 @@ use std::time::{Duration, UNIX_EPOCH};
 
 use notify::{RecommendedWatcher, RecursiveMode, Watcher};
 use pulldown_cmark::{html, Options, Parser};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, Manager, State};
 
 // ---------------------------------------------------------------------------
@@ -1873,6 +1873,94 @@ fn print_to_console(text: &str) {
     let _ = std::io::stdout().write_all(text.as_bytes());
 }
 
+// ---------------------------------------------------------------------------
+// Window geometry
+// ---------------------------------------------------------------------------
+
+/// Where the window sat when it was last closed, in logical pixels so a DPI
+/// change or a different monitor does not resize it.
+#[derive(Serialize, Deserialize)]
+struct Geometry {
+    x: i32,
+    y: i32,
+    width: u32,
+    height: u32,
+}
+
+fn geometry_path(app: &AppHandle) -> Option<PathBuf> {
+    app.path()
+        .app_local_data_dir()
+        .ok()
+        .map(|dir| dir.join("window.json"))
+}
+
+fn read_geometry(app: &AppHandle) -> Option<Geometry> {
+    let path = geometry_path(app)?;
+    serde_json::from_str(&std::fs::read_to_string(path).ok()?).ok()
+}
+
+fn write_geometry(app: &AppHandle, geometry: &Geometry) {
+    let Some(path) = geometry_path(app) else { return };
+    if let Some(dir) = path.parent() {
+        let _ = std::fs::create_dir_all(dir);
+    }
+    if let Ok(text) = serde_json::to_string(geometry) {
+        let _ = std::fs::write(path, text);
+    }
+}
+
+/// Restore the last size and position. The position is only applied when it still
+/// lands on a monitor: unplugging a display must not strand the window off-screen.
+fn restore_geometry(window: &tauri::WebviewWindow) {
+    let Some(saved) = read_geometry(&window.app_handle().clone()) else { return };
+
+    let _ = window.set_size(tauri::Size::Logical(tauri::LogicalSize::new(
+        saved.width as f64,
+        saved.height as f64,
+    )));
+
+    let on_screen = window.available_monitors().map(|monitors| {
+        monitors.iter().any(|monitor| {
+            let scale = monitor.scale_factor();
+            let origin = monitor.position().to_logical::<f64>(scale);
+            let size = monitor.size().to_logical::<f64>(scale);
+            let x = saved.x as f64;
+            let y = saved.y as f64;
+            x >= origin.x && y >= origin.y
+                && x < origin.x + size.width
+                && y < origin.y + size.height
+        })
+    });
+    if on_screen.unwrap_or(false) {
+        let _ = window.set_position(tauri::Position::Logical(tauri::LogicalPosition::new(
+            saved.x as f64,
+            saved.y as f64,
+        )));
+    }
+}
+
+/// Called when the window is closing, which is the last moment its geometry is
+/// still readable.
+fn save_geometry(window: &tauri::Window) {
+    // inner_size, because set_size restores the client area; saving the outer size
+    // would make the window grow by its frame on every launch.
+    let (Ok(position), Ok(size)) = (window.outer_position(), window.inner_size()) else {
+        return;
+    };
+    let scale = window.scale_factor().unwrap_or(1.0);
+    let origin = position.to_logical::<f64>(scale);
+    let extent = size.to_logical::<f64>(scale);
+    write_geometry(
+        &window.app_handle().clone(),
+        &Geometry {
+            x: origin.x.round() as i32,
+            y: origin.y.round() as i32,
+            width: extent.width.round() as u32,
+            height: extent.height.round() as u32,
+        },
+    );
+}
+
 fn run(startup_path: Option<PathBuf>) {
     tauri::Builder::default()
         // The single-instance plugin must be registered before anything else.
@@ -1918,6 +2006,11 @@ fn run(startup_path: Option<PathBuf>) {
                 }
             });
 
+            // Put the window back where it was last closed, before it is shown.
+            if let Some(window) = handle.get_webview_window("main") {
+                restore_geometry(&window);
+            }
+
             Ok(())
         })
         // Drag & drop from Explorer. Drops are delivered as *webview* events in
@@ -1951,6 +2044,13 @@ fn run(startup_path: Option<PathBuf>) {
                 }
             }
             _ => {}
+        })
+        .on_window_event(|window, event| {
+            // The last moment the geometry is readable; the window is already gone
+            // by the time the run loop exits.
+            if matches!(event, tauri::WindowEvent::CloseRequested { .. }) {
+                save_geometry(window);
+            }
         })
         .build(tauri::generate_context!())
         .expect("failed to build MD Viewer")
@@ -2241,6 +2341,19 @@ footnote[^1]
     fn image_dimensions_are_skipped_without_a_folder() {
         let html = render_markdown_in("![a](shot.png)\n", None);
         assert_eq!(html.matches("width=\"").count(), 0, "{html}");
+    }
+
+    /// The geometry file outlives a build, so its shape must round-trip: a field
+    /// rename would silently throw away everyone's saved window.
+    #[test]
+    fn window_geometry_round_trips_through_json() {
+        let saved = Geometry { x: -1280, y: 40, width: 900, height: 780 };
+        let text = serde_json::to_string(&saved).unwrap();
+        let parsed: Geometry = serde_json::from_str(&text).unwrap();
+        assert_eq!(parsed.x, -1280, "a monitor to the left is a negative origin");
+        assert_eq!(parsed.y, 40);
+        assert_eq!(parsed.width, 900);
+        assert_eq!(parsed.height, 780);
     }
 
     /// Fenced code gets token spans so the stylesheet can colour it. Only the

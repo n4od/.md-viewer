@@ -319,6 +319,7 @@
     }
 
     function showWelcome() {
+      document.body.classList.remove("has-doc");
       welcome.hidden = false;
       docEl.hidden = true;
       footer.hidden = true;
@@ -441,6 +442,7 @@
       welcomeError.hidden = true;
       errorCard.hidden = true;
       docEl.hidden = false;
+      document.body.classList.add("has-doc");
       footer.hidden = false;
       skipLink.hidden = false;
 
@@ -541,6 +543,7 @@
     }
 
     function showWelcomeState() {
+      document.body.classList.remove("has-doc");
       welcome.hidden = false;
       docEl.hidden = true;
       footer.hidden = true;
@@ -836,6 +839,13 @@
         if (on) a.setAttribute("aria-current", "location");
         else a.removeAttribute("aria-current");
       });
+      // The pinned bar keeps the current section in view; before anything has been
+      // picked it shows the document name.
+      var bar = $("sticky-head");
+      if (bar) {
+        var picked = activeId ? document.getElementById(activeId) : null;
+        bar.textContent = picked ? picked.textContent : (current && current.name) || "";
+      }
     }
 
     window.addEventListener("scroll", onScroll, { passive: true });
@@ -920,6 +930,43 @@
         })
         .catch(noop);
     }
+
+    /* ---------- image lightbox ---------- */
+
+    var lightbox = $("lightbox");
+
+    function closeLightbox() {
+      lightbox.hidden = true;
+      $("lightbox-img").removeAttribute("src");
+    }
+
+    // Bound to the article, like the heading anchor above, so an image wrapped in
+    // a link opens the picture instead of navigating away.
+    docEl.addEventListener("click", function (event) {
+      var img = event.target.closest && event.target.closest("img");
+      if (!img || !img.getAttribute("src")) return;
+      event.preventDefault();
+      event.stopPropagation();
+      var big = $("lightbox-img");
+      big.src = img.getAttribute("src");
+      big.alt = img.alt || "";
+      lightbox.hidden = false;
+      $("lightbox-close").focus();
+    });
+
+    lightbox.addEventListener("click", function (event) {
+      if (event.target === lightbox || event.target.id === "lightbox-close") closeLightbox();
+    });
+
+    // Bound to the overlay rather than the document: the close button holds focus,
+    // so Escape arrives here first and stopping it keeps the global shortcut
+    // handler (which closes find and the outline) out of the way.
+    lightbox.addEventListener("keydown", function (event) {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      event.stopPropagation();
+      closeLightbox();
+    });
 
     /* ---------- links ---------- */
 
