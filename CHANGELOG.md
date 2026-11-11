@@ -7,6 +7,8 @@ the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-11-11
+
 ### Added
 
 - **A pinned section title.** While a document is open, the section the scroll-spy
