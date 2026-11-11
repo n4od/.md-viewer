@@ -7,6 +7,8 @@ the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.3.4] - 2026-11-11
+
 ### Added
 
 - **A document icon for Markdown files.** Explorer used to draw the app tile for every
