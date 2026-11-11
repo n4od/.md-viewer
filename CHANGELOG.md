@@ -7,6 +7,26 @@ the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **A settings panel.** A gear in the toolbar opens a dialog holding every preference
+  the app had been keeping to itself: theme, text size (previously keyboard-only),
+  reading width, whether the reading position is remembered, whether the last
+  document reopens at start, the default find options, the recent list, the file
+  types it claims with the default-app action, whether window size and position are
+  remembered, and an About line with the running version. It is a native `<dialog>`,
+  so Esc and focus handling come from the platform, and the two actions it shares
+  with the welcome screen reuse those buttons rather than duplicating them.
+- **"Reopen the last document at start" is now a real setting.** It had been left as
+  a one-shot offer because a persisted switch had nowhere to live; the panel is a
+  permanent place to turn it back off.
+
+### Changed
+
+- The CI frontend size budget moves from 96/56 KB to 108/62 KB, because the settings
+  panel is the largest single frontend change so far. The guard still rules out a
+  bundler or a framework.
+
 ## [0.3.2] - 2026-11-11
 
 ### Added

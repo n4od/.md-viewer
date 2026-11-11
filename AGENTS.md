@@ -31,9 +31,9 @@ backend is one Rust file. Windows is the only exercised target.
   `npm.cmd` / `npx.cmd`, and note `node_modules` is absent, so `npm run ...`
   needs `npm install` first.
 - CI lives in `.github/workflows/ci.yml` (windows-latest: a **frontend size budget**
-  — `src/` ≤ 96 KB, `app.js` ≤ 56 KB, raised from 80/46 KB when the 0.2.0 batch
-  reached that ceiling and again to 96/56 after tabs, the pinned section title and
-  the image lightbox — then `cargo check --all-targets`, then
+  — `src/` ≤ 108 KB, `app.js` ≤ 62 KB, raised from 80/46 KB when the 0.2.0 batch
+  reached that ceiling, to 96/56 for tabs and the Phase 4 items, and to 108/62 for
+  the settings panel — then `cargo check --all-targets`, then
   `cargo test`). There is still no lint/format/typecheck config — don't invent
   `npm run lint`; `cargo check` + tests are the gate. The size budget is the guard
   behind "three static files, no framework": if a change needs more room, raise it
@@ -178,6 +178,15 @@ backend is one Rust file. Windows is the only exercised target.
   `highlight-demo.md` does the same for fenced code — one block per language the
   highlighter knows, plus the traps (markup inside a string, an unknown language, no
   language tag at all).
+- Preferences live in `localStorage` under `mdviewer.*`: `theme`, `scale`, `width`,
+  `resume`, `reopen`, `geometry`, `find`, `recent` and `positions`. The settings panel
+  is the only UI over them — a native `<dialog>`, so Esc, focus trapping and focus
+  return are the platform's job rather than hand-rolled — and it re-reads its state on
+  every open through `syncSettings()`. The two actions it shares with the welcome
+  screen click those buttons instead of duplicating the flow. The one preference Rust
+  needs is "remember window geometry": the frontend sends it with
+  `set_remember_geometry` and Rust keeps the flag in `window-remember.txt` beside the
+  geometry, so `setup()` can honour it before the webview exists.
 - Preview harness specifics: it fakes `window.__TAURI__`, duplicates
   `src/index.html` markup (keep in sync), and exposes `window.__previewEmit` /
   `window.__previewPayload` for driving events.

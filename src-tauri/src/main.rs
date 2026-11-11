@@ -1195,6 +1195,7 @@ struct DefaultReport {
 struct DefaultStatus {
     progid: &'static str,
     executable: String,
+    extensions: Vec<&'static str>,
     is_default: bool,
     supported: bool,
 }
@@ -1531,7 +1532,8 @@ fn default_status() -> DefaultStatus {
         executable: current_program()
             .map(|exe| exe.display().to_string())
             .unwrap_or_default(),
-        is_default: is_default_progid(shell_default::current_default("md")),
+            extensions: CLAIM_EXTENSIONS.to_vec(),
+            is_default: is_default_progid(shell_default::current_default("md")),
         supported: cfg!(windows),
     }
 }
@@ -1680,6 +1682,21 @@ fn load_path(app: AppHandle, path: String) -> Document {
 fn reload(state: State<'_, Viewer>) -> Option<Document> {
     let path = state.current.lock().unwrap().clone()?;
     Some(load_document(&path))
+}
+
+/// The running version, for the About section of the settings panel, so the
+/// number shown can never drift from the binary.
+#[tauri::command]
+fn app_version() -> &'static str {
+    env!("CARGO_PKG_VERSION")
+}
+
+/// Whether the window's size and position should be carried across launches. The
+/// frontend owns the checkbox; the flag lives next to the geometry so `setup()`
+/// can honour it before the webview exists.
+#[tauri::command]
+fn set_remember_geometry(app: AppHandle, on: bool) {
+    set_remembering(&app, on);
 }
 
 /// The subset of `paths` that still exists as a file. The empty state calls this
@@ -1909,10 +1926,37 @@ fn write_geometry(app: &AppHandle, geometry: &Geometry) {
     }
 }
 
+fn remember_path(app: &AppHandle) -> Option<PathBuf> {
+    app.path()
+        .app_local_data_dir()
+        .ok()
+        .map(|dir| dir.join("window-remember.txt"))
+}
+
+/// Absent means on, so the behaviour an existing install already has is kept.
+fn remembering(app: &AppHandle) -> bool {
+    remember_path(app)
+        .and_then(|path| std::fs::read_to_string(path).ok())
+        .map(|text| text.trim() != "off")
+        .unwrap_or(true)
+}
+
+fn set_remembering(app: &AppHandle, on: bool) {
+    let Some(path) = remember_path(app) else { return };
+    if let Some(dir) = path.parent() {
+        let _ = std::fs::create_dir_all(dir);
+    }
+    let _ = std::fs::write(path, if on { "on" } else { "off" });
+}
+
 /// Restore the last size and position. The position is only applied when it still
 /// lands on a monitor: unplugging a display must not strand the window off-screen.
 fn restore_geometry(window: &tauri::WebviewWindow) {
-    let Some(saved) = read_geometry(&window.app_handle().clone()) else { return };
+    let app = window.app_handle().clone();
+    if !remembering(&app) {
+        return;
+    }
+    let Some(saved) = read_geometry(&app) else { return };
 
     let _ = window.set_size(tauri::Size::Logical(tauri::LogicalSize::new(
         saved.width as f64,
@@ -1942,6 +1986,9 @@ fn restore_geometry(window: &tauri::WebviewWindow) {
 /// Called when the window is closing, which is the last moment its geometry is
 /// still readable.
 fn save_geometry(window: &tauri::Window) {
+    if !remembering(&window.app_handle().clone()) {
+        return;
+    }
     // inner_size, because set_size restores the client area; saving the outer size
     // would make the window grow by its frame on every launch.
     let (Ok(position), Ok(size)) = (window.outer_position(), window.inner_size()) else {
@@ -1983,7 +2030,9 @@ fn run(startup_path: Option<PathBuf>) {
             open_link,
             make_default,
             default_status,
-            filter_existing
+            filter_existing,
+            app_version,
+            set_remember_geometry
         ])
         .setup(move |app| {
             let handle = app.handle().clone();

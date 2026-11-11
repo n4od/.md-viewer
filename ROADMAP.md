@@ -132,6 +132,10 @@ Ideas that were proposed, decided and built. New ones would start here.
       left the window rather than at the configured default. Saved as logical pixels
       next to the WebView2 profile, and ignored if that spot is no longer on a
       monitor.
+- [x] **A settings panel**: one dialog holding theme, text size, reading width, the
+      reading-position and reopen-at-start toggles, the default find options, the
+      recent list and claimed file types with the default-app action, remembered
+      window geometry, and an About line with the running version.
 
 ## Not planned
 

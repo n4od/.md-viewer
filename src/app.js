@@ -57,6 +57,30 @@
   applyTheme();
   var readingScale = applyScale(parseFloat(localStorage.getItem(SCALE_KEY) || "1") || 1);
 
+  var WIDTH_KEY = "mdviewer.width";
+
+  function setPref(key, value) {
+    try { localStorage.setItem(key, String(value)); } catch (_) {}
+  }
+
+  function getPref(key, fallback) {
+    try {
+      var value = localStorage.getItem(key);
+      return value === null ? fallback : value;
+    } catch (_) { return fallback; }
+  }
+
+  /* Narrow, medium or wide reading column. An attribute on <html> rather than an
+   * inline style, because the CSP rejects those. */
+  function applyWidth(width) {
+    var value = width === "narrow" || width === "wide" ? width : "medium";
+    document.documentElement.setAttribute("data-width", value);
+    setPref(WIDTH_KEY, value);
+    return value;
+  }
+
+  applyWidth(getPref(WIDTH_KEY, "medium"));
+
   darkQuery.addEventListener("change", function () {
     if (themePref === "auto") applyTheme();
   });
@@ -490,7 +514,7 @@
       } else {
         // A different document: resume where it was left. Images may still be
         // loading, so the browser clamps this to the height that exists yet.
-        var stored = readPositions()[doc.path];
+        var stored = resumeEnabled() ? readPositions()[doc.path] : null;
         var target = typeof stored === "number" ? stored : 0;
         window.scrollTo({ top: target, behavior: "instant" });
         if (target > 200) {
@@ -748,7 +772,7 @@
     var positionDirty = false;
 
     function writePosition() {
-      if (!current || !current.path) return;
+      if (!current || !current.path || !resumeEnabled()) return;
       var map = readPositions();
       map[current.path] = Math.round(window.scrollY);
       var keys = Object.keys(map);
@@ -1207,6 +1231,16 @@
         open: open,
         close: close,
         isOpen: function () { return !bar.hidden; },
+        readOptions: function () {
+          return { caseSensitive: options.caseSensitive, wholeWord: options.wholeWord };
+        },
+        setOptions: function (caseSensitive, wholeWord) {
+          options.caseSensitive = !!caseSensitive;
+          options.wholeWord = !!wholeWord;
+          saveOptions();
+          syncToggles();
+          rerun();
+        },
         refresh: function () {
           if (!bar.hidden && input.value.trim()) collect(input.value.trim());
           else clear();
@@ -1220,14 +1254,147 @@
     var order = ["auto", "light", "dark"];
     var themeLabels = { auto: "system", light: "light", dark: "dark" };
 
-    function cycleTheme() {
-      themePref = order[(order.indexOf(themePref) + 1) % order.length];
-      localStorage.setItem(THEME_KEY, themePref);
-      applyTheme();
+    function syncThemeButton() {
       $("btn-theme").title = "Theme: " + themeLabels[themePref] + " (Ctrl+Shift+L)";
       $("btn-theme").setAttribute("aria-label", "Theme: " + themeLabels[themePref] + " (click to change)");
+    }
+
+    function setTheme(pref) {
+      themePref = order.indexOf(pref) === -1 ? "auto" : pref;
+      setPref(THEME_KEY, themePref);
+      applyTheme();
+      syncThemeButton();
+    }
+
+    function cycleTheme() {
+      setTheme(order[(order.indexOf(themePref) + 1) % order.length]);
       toast("Theme: " + themeLabels[themePref]);
     }
+
+    /* ---------- settings ---------- */
+
+    var RESUME_KEY = "mdviewer.resume";
+    var REOPEN_KEY = "mdviewer.reopen";
+    var GEOMETRY_KEY = "mdviewer.geometry";
+
+    function resumeEnabled() { return getPref(RESUME_KEY, "on") !== "off"; }
+    function reopenEnabled() { return getPref(REOPEN_KEY, "off") === "on"; }
+    function rememberEnabled() { return getPref(GEOMETRY_KEY, "on") !== "off"; }
+
+    var versionLoaded = false;
+
+    function markSegment(selector, attr, current) {
+      var first = $("settings").querySelector(selector);
+      if (!first) return;
+      first.parentNode.querySelectorAll("button").forEach(function (button) {
+        button.setAttribute("aria-pressed", String(button.getAttribute(attr) === current));
+      });
+    }
+
+    function syncSettings() {
+      markSegment("button[data-theme]", "data-theme", themePref);
+      markSegment(
+        "button[data-width]",
+        "data-width",
+        document.documentElement.getAttribute("data-width") || "medium"
+      );
+      $("opt-scale-value").textContent = Math.round(readingScale * 100) + "%";
+      $("opt-position").checked = resumeEnabled();
+      $("opt-reopen").checked = reopenEnabled();
+      $("opt-geometry").checked = rememberEnabled();
+      $("opt-recent-count").textContent = String(readRecent().length);
+
+      var options = find.readOptions();
+      $("opt-case").setAttribute("aria-pressed", String(options.caseSensitive));
+      $("opt-word").setAttribute("aria-pressed", String(options.wholeWord));
+
+      invoke("default_status")
+        .then(function (state) {
+          if (!state || !state.extensions) return;
+          $("opt-exts").textContent = state.extensions.map(function (ext) { return "." + ext; }).join("  ");
+          $("opt-default-status").hidden = false;
+          $("opt-default-status").textContent = state.isDefault ? "Already the default" : "Not the default";
+          $("opt-default").textContent = state.isDefault ? "Re-register" : "Set as default";
+        })
+        .catch(noop);
+    }
+
+    function openSettings() {
+      syncSettings();
+      if (!versionLoaded) {
+        versionLoaded = true;
+        invoke("app_version")
+          .then(function (version) { if (version) $("opt-version").textContent = version; })
+          .catch(noop);
+      }
+      $("settings").showModal();
+    }
+
+    $("btn-settings").addEventListener("click", openSettings);
+
+    // Native dialogs usually restore focus to the opener; this makes it certain.
+    $("settings").addEventListener("close", function () {
+      $("btn-settings").focus();
+    });
+
+    ["auto", "light", "dark"].forEach(function (name) {
+      $("settings").querySelector('button[data-theme="' + name + '"]').addEventListener("click", function () {
+        setTheme(name);
+        syncSettings();
+      });
+    });
+
+    ["narrow", "medium", "wide"].forEach(function (name) {
+      $("settings").querySelector('button[data-width="' + name + '"]').addEventListener("click", function () {
+        applyWidth(name);
+        syncSettings();
+      });
+    });
+
+    $("opt-scale-down").addEventListener("click", function () {
+      readingScale = applyScale(readingScale - 0.1);
+      syncSettings();
+    });
+    $("opt-scale-up").addEventListener("click", function () {
+      readingScale = applyScale(readingScale + 0.1);
+      syncSettings();
+    });
+
+    $("opt-position").addEventListener("change", function (event) {
+      setPref(RESUME_KEY, event.target.checked ? "on" : "off");
+      toast(event.target.checked ? "Reading position will be remembered" : "Reading position will not be saved");
+    });
+
+    $("opt-reopen").addEventListener("change", function (event) {
+      setPref(REOPEN_KEY, event.target.checked ? "on" : "off");
+    });
+
+    $("opt-geometry").addEventListener("change", function (event) {
+      setPref(GEOMETRY_KEY, event.target.checked ? "on" : "off");
+      invoke("set_remember_geometry", { on: event.target.checked }).catch(noop);
+    });
+
+    $("opt-case").addEventListener("click", function () {
+      var options = find.readOptions();
+      find.setOptions(!options.caseSensitive, options.wholeWord);
+      syncSettings();
+    });
+    $("opt-word").addEventListener("click", function () {
+      var options = find.readOptions();
+      find.setOptions(options.caseSensitive, !options.wholeWord);
+      syncSettings();
+    });
+
+    // These two reuse the buttons that already own the behaviour, so the welcome
+    // screen and the panel cannot drift apart.
+    $("opt-clear-recent").addEventListener("click", function () {
+      $("recent-clear").click();
+      syncSettings();
+    });
+    $("opt-default").addEventListener("click", function () {
+      $("welcome-default").click();
+      syncSettings();
+    });
 
     /* ---------- keyboard ---------- */
 
@@ -1409,7 +1576,11 @@
 
     invoke("initial_document")
       .then(function (doc) {
-        if (doc) render(doc, { reset: true });
+        if (doc) { render(doc, { reset: true }); return; }
+        // "Reopen the last document" is safe to persist now that the settings
+        // panel is a permanent place to turn it back off.
+        var last = reopenEnabled() ? readRecent()[0] : null;
+        if (last && last.path) openPath(last.path);
         else showWelcome();
       })
       .catch(function (error) {

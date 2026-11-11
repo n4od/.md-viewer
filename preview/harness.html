@@ -100,6 +100,7 @@
               return Promise.resolve({
                 progid: "MDViewer.Markdown",
                 executable: DEMO_ROOT + "src-tauri\\target\\release\\mdviewer.exe",
+                extensions: ["md", "markdown", "mdown", "mkd", "mkdn", "mdwn", "mdtxt", "mdtext"],
                 isDefault: false,
                 supported: true
               });
@@ -112,6 +113,11 @@
                 message: "Registered. In the Windows dialog pick MD Viewer and tick \"Always use this app\"."
               });
             }
+            if (command === "app_version") {
+              // Mirrors Cargo.toml; the harness has no package metadata of its own.
+              return Promise.resolve("0.3.2");
+            }
+            if (command === "set_remember_geometry") return Promise.resolve();
             return Promise.resolve(null);
           },
           convertFileSrc: function (path) {
@@ -174,6 +180,9 @@
     </div>
     <div class="bar-right">
       <span id="doc-meta" class="doc-meta"></span>
+      <button id="btn-settings" class="icon-btn" type="button" title="Settings" aria-label="Settings" aria-haspopup="dialog">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.5 5.5h13M3.5 10h13M3.5 14.5h13"/><circle cx="7" cy="5.5" r="1.7"/><circle cx="13" cy="10" r="1.7"/><circle cx="9" cy="14.5" r="1.7"/></svg>
+      </button>
       <button id="btn-toc" class="icon-btn" type="button" title="Contents (Ctrl+B)" aria-label="Toggle contents" aria-expanded="false" aria-controls="toc">
         <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 5.5h12M4 10h8M4 14.5h10"/></svg>
       </button>
@@ -263,7 +272,102 @@
   </div>
 
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
-<div id="lightbox" class="lightbox" hidden>
+<dialog id="settings" class="settings" aria-labelledby="settings-title">
+    <form method="dialog" class="settings-form" id="settings-form">
+      <header class="settings-head">
+        <h2 id="settings-title">Settings</h2>
+        <button class="settings-close" type="submit" aria-label="Close settings">&times;</button>
+      </header>
+
+      <section class="settings-group">
+        <h3>Appearance</h3>
+        <div class="settings-row">
+          <span class="settings-label" id="lbl-theme">Theme</span>
+          <div class="settings-seg" role="group" aria-labelledby="lbl-theme">
+            <button type="button" data-theme="auto">System</button>
+            <button type="button" data-theme="light">Light</button>
+            <button type="button" data-theme="dark">Dark</button>
+          </div>
+        </div>
+        <div class="settings-row">
+          <span class="settings-label" id="lbl-scale">Text size</span>
+          <div class="settings-seg" role="group" aria-labelledby="lbl-scale">
+            <button type="button" id="opt-scale-down" aria-label="Smaller text">&minus;</button>
+            <span id="opt-scale-value" class="settings-value">100%</span>
+            <button type="button" id="opt-scale-up" aria-label="Larger text">+</button>
+          </div>
+        </div>
+        <div class="settings-row">
+          <span class="settings-label" id="lbl-width">Reading width</span>
+          <div class="settings-seg" role="group" aria-labelledby="lbl-width">
+            <button type="button" data-width="narrow">Narrow</button>
+            <button type="button" data-width="medium">Medium</button>
+            <button type="button" data-width="wide">Wide</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="settings-group">
+        <h3>Reading</h3>
+        <label class="settings-row">
+          <span class="settings-label">Resume where I left off</span>
+          <input id="opt-position" type="checkbox" />
+        </label>
+        <label class="settings-row">
+          <span class="settings-label">Reopen the last document at start</span>
+          <input id="opt-reopen" type="checkbox" />
+        </label>
+        <div class="settings-row">
+          <span class="settings-label" id="lbl-find">Find matches</span>
+          <div class="settings-seg" role="group" aria-labelledby="lbl-find">
+            <button type="button" id="opt-case" aria-pressed="false">Match case</button>
+            <button type="button" id="opt-word" aria-pressed="false">Whole word</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="settings-group">
+        <h3>Documents</h3>
+        <div class="settings-row">
+          <span class="settings-label">Recent files</span>
+          <span class="settings-inline">
+            <span id="opt-recent-count" class="settings-value">0</span>
+            <button type="button" class="btn-inline" id="opt-clear-recent">Clear</button>
+          </span>
+        </div>
+        <div class="settings-row">
+          <span class="settings-label">File types</span>
+          <span id="opt-exts" class="settings-exts"></span>
+        </div>
+        <div class="settings-row">
+          <span class="settings-label">Default app</span>
+          <span class="settings-inline">
+            <button type="button" class="btn-ghost" id="opt-default">Set as default</button>
+            <span id="opt-default-status" class="settings-note" hidden></span>
+          </span>
+        </div>
+      </section>
+
+      <section class="settings-group">
+        <h3>Window</h3>
+        <label class="settings-row">
+          <span class="settings-label">Remember size and position</span>
+          <input id="opt-geometry" type="checkbox" />
+        </label>
+      </section>
+
+      <section class="settings-group">
+        <h3>About</h3>
+        <p class="settings-about">MD Viewer <span id="opt-version">unknown</span> &middot; MIT licence</p>
+        <p class="settings-about">
+          <a href="https://github.com/n4od/.md-viewer">Repository</a> &middot;
+          <a href="https://github.com/n4od/.md-viewer/blob/main/CHANGELOG.md">Changelog</a>
+        </p>
+      </section>
+    </form>
+  </dialog>
+
+  <div id="lightbox" class="lightbox" hidden>
     <button id="lightbox-close" class="lightbox-close" type="button" aria-label="Close image">&times;</button>
     <img id="lightbox-img" alt="" />
   </div>
