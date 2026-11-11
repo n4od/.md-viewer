@@ -1,11 +1,8 @@
 # Roadmap
 
-Where MD Viewer is going, and what it deliberately is not. Status as of
-**0.2.0** (released 2026-11-11): read-only viewer, Windows-verified, published to
-GitHub with CI, installer and in-app association both working, plus the
-accessibility pass, outline, find upgrades, reading position, progressive
-rendering of large files, section links and image sizing that landed since 0.1.1.
-Installer also verified in Windows Sandbox (2026-11-11).
+Where MD Viewer is going, and what it deliberately is not. The phases below are a
+delivery order, not release numbers: what actually shipped, and in which release,
+is recorded in [CHANGELOG.md](CHANGELOG.md).
 
 ## Guiding principles
 
@@ -22,10 +19,9 @@ decision, not a pull request.
 - **Windows first.** Other platforms are welcome once their association and
   packaging stories are actually exercised.
 
-## Shipped — 0.2.0
+## Phase 1 — foundation (done)
 
-Released 2026-11-11 ([CHANGELOG](CHANGELOG.md)). Started as small, verifiable
-groundwork and grew into the reading and rendering work below.
+Packaging, continuous integration, and the ground the reader stands on.
 
 - [x] **Exercise the installer end to end.** Silent install, one
       `MDViewer.Markdown` ProgId pointing at the installed executable, a single
@@ -54,6 +50,11 @@ groundwork and grew into the reading and rendering work below.
       `aria-expanded` and the current section `aria-current`; icon buttons carry
       labels; plain `j`/`k` no longer scroll while typing in the find field; muted
       text measures 4.65:1 (light) and 5.97:1 (dark), past WCAG AA.
+
+## Phase 2 — reading and rendering (done)
+
+The things you reach for while reading, and the render path underneath them.
+
 - [x] **Find upgrades**: match-case and whole-word toggles (buttons, plus Alt+C /
       Alt+W), remembered across sessions, and a count that reports every occurrence
       even when only the first 1500 are highlighted.
@@ -81,16 +82,15 @@ groundwork and grew into the reading and rendering work below.
       the text below no longer shifts. Author values win, remote/`data:` images are
       skipped, and a render with no document folder does no I/O. Rust-side, so it
       costs nothing in the frontend size budget.
-
-## Next — 0.3
-
 - [x] **Session continuity.** With no file on the command line, the welcome screen
       offers the last document as its lead action ("Reopen sample.md"), so resuming
       is one click. Nothing is persisted and there is no auto-open setting: the last
       document is simply the top of the recent list, which avoids a switch that
       could leave the welcome screen — the only place to turn it off — unreachable.
 
-## Later — exploring
+## Phase 3 — exploring
+
+Not committed. Each of these wants a decision before it starts.
 
 - [ ] **macOS and Linux**: packaging plus associations (macOS `Opened` events,
       Linux `.desktop` `MimeType`). Different flows from Windows; needs its own
@@ -111,8 +111,8 @@ Listed so the answer is explicit, not to invite debate:
 
 - **Editing, saving, formatting** — the product is a reader.
 - **Printing and PDF export** — a reader with no print action has no route to it.
-      Print styles were written for 0.2.0 and removed again afterwards rather than
-      left in the sheet unreachable.
+  Print styles were written and then removed again rather than left in the sheet
+  unreachable.
 - **Tabs or multiple windows** — one window, one document, enforced by the
   single-instance plugin.
 - **Telemetry, accounts, or network calls** at startup. Remote images in a
@@ -125,6 +125,6 @@ Listed so the answer is explicit, not to invite debate:
 ## Contributing to the roadmap
 
 Open an issue on GitHub ([@n4od](https://github.com/n4od)) before starting
-anything in *Later*. User-visible changes get an entry in
+anything in *Phase 3*. User-visible changes get an entry in
 [CHANGELOG.md](CHANGELOG.md), and the verification habits in
 [AGENTS.md](AGENTS.md) apply to roadmap work too.
