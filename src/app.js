@@ -147,6 +147,8 @@
     var current = null;      // last rendered document payload
     var headings = [];       // [{ id, level, el }]
     var spinner = null;
+    var tabs = [];           // [{ path, name }] in strip order
+    var activePath = null;   // the tab whose document is on screen
 
     /* ---------- toast ---------- */
 
@@ -223,6 +225,97 @@
       reopen.hidden = false;
       // Exactly one primary action on screen: resume leads, opening steps back.
       open.className = "btn-ghost";
+    }
+
+    /* ---------- tabs ---------- */
+
+    /* The tab set is frontend state. Rust keeps exactly one active document, and
+     * switching a tab is just `load_path` — which re-points the watcher, the
+     * asset scope and the window title at that document, so a background tab is
+     * re-read (and therefore fresh) when you switch back to it. */
+
+    function tabIndex(path) {
+      for (var i = 0; i < tabs.length; i++) {
+        if (tabs[i].path === path) return i;
+      }
+      return -1;
+    }
+
+    /* Called from render(), so every route to a document — dialog, recent list,
+     * link, drag & drop, a second double-click, a reload — lands in the strip. */
+    function rememberTab(doc) {
+      if (!doc || !doc.path) return;
+      var index = tabIndex(doc.path);
+      if (index === -1) {
+        tabs.push({ path: doc.path, name: doc.name || doc.path });
+        index = tabs.length - 1;
+      } else {
+        tabs[index].name = doc.name || doc.path;
+      }
+      activePath = doc.path;
+      // Each tab keeps its own find query. Restoring it here means finishRender()
+      // re-collects matches for the document that is now on screen, not the last.
+      var input = $("find-input");
+      if (input) input.value = tabs[index].query || "";
+      renderTabs();
+    }
+
+    function renderTabs() {
+      var strip = $("tabs");
+      var multiple = tabs.length > 1;
+      document.body.classList.toggle("has-tabs", multiple);
+      strip.hidden = !multiple;
+      strip.textContent = "";
+      if (!multiple) return;
+
+      tabs.forEach(function (tab) {
+        var wrap = document.createElement("div");
+        wrap.className = "tab" + (tab.path === activePath ? " active" : "");
+
+        var open = document.createElement("button");
+        open.type = "button";
+        open.className = "tab-open";
+        open.textContent = tab.name;
+        open.title = tab.path;
+        if (tab.path === activePath) open.setAttribute("aria-current", "page");
+        open.addEventListener("click", function () {
+          if (tab.path !== activePath) openPath(tab.path);
+        });
+
+        var close = document.createElement("button");
+        close.type = "button";
+        close.className = "tab-close";
+        close.textContent = "\u00d7";
+        close.setAttribute("aria-label", "Close " + tab.name);
+        close.addEventListener("click", function () { closeTab(tab.path); });
+
+        wrap.append(open, close);
+        strip.appendChild(wrap);
+      });
+
+      var active = strip.querySelector(".tab.active");
+      if (active && active.scrollIntoView) {
+        active.scrollIntoView({ block: "nearest", inline: "nearest" });
+      }
+    }
+
+    function closeTab(path) {
+      var index = tabIndex(path);
+      if (index === -1) return;
+      tabs.splice(index, 1);
+
+      if (path !== activePath) { renderTabs(); return; }
+      if (!tabs.length) {
+        // The last document is gone: back to the welcome screen, and drop the
+        // rendered article so it holds no memory.
+        activePath = null;
+        current = null;
+        renderTabs();
+        showWelcome();
+        docEl.textContent = "";
+        return;
+      }
+      openPath(tabs[Math.min(index, tabs.length - 1)].path);
     }
 
     function showWelcome() {
@@ -343,6 +436,7 @@
       var sameFile = current && current.path === doc.path;
 
       current = doc;
+      rememberTab(doc);
       welcome.hidden = true;
       welcomeError.hidden = true;
       errorCard.hidden = true;
@@ -1151,6 +1245,13 @@
     $("welcome-reopen").addEventListener("click", function () {
       var last = readRecent()[0];
       if (last && last.path) openPath(last.path);
+    });
+
+    // Remember each tab's find query, so switching documents switches the search
+    // with it. The find module listens on the same input for collection.
+    $("find-input").addEventListener("input", function () {
+      var tab = tabs[tabIndex(activePath)];
+      if (tab) tab.query = $("find-input").value;
     });
     $("error-retry").addEventListener("click", reloadFile);
     $("recent-clear").addEventListener("click", function () {

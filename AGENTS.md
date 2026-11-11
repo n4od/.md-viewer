@@ -73,6 +73,16 @@ backend is one Rust file. Windows is the only exercised target.
   left exactly as the renderer emitted it. Colours are `--tok-*` in both themes and
   are held to WCAG AA against `--code-bg`. The fixture in `preview/harness.html`
   mirrors this output by hand so the CSS can be iterated without a rebuild.
+- Tabs are frontend state. `tabs`/`activePath` in `app.js` own the strip, and
+  `rememberTab()` — called from `render()` — upserts by path, so every route to a
+  document (dialog, recent list, link, drop, a second double-click, a reload) lands
+  in it. Rust still tracks exactly one active document: `prepare_document` is the
+  only writer of `Viewer.current`, and switching a tab is just `load_path`, which
+  re-points the watcher, the asset scope and the window title for free. Everything
+  docked below the topbar keys off `--tabs-h` (0 or 34px), which `body.has-tabs`
+  raises — headings' scroll margin, the outline drawer, the welcome height. The
+  strip is hidden unless two documents are open, and a tab is a wrapper holding two
+  sibling buttons, because a button may not contain another button.
 - Documents above 1 MiB of HTML are attached in 128 KiB chunks by
   `renderProgressive()`; `render()` (the small path) and it share `finishRender()`
   for everything that needs the whole document in the DOM. `enhance(root, state)`

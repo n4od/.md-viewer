@@ -7,6 +7,18 @@ the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **Tabs.** More than one document can be open at once: open, close and switch
+  between them in the one window. The strip only appears once a second document is
+  open, so reading a single document looks exactly as it did before, and each tab
+  keeps its own scroll position, section marker and find query. This reverses the
+  earlier "tabs or multiple windows" decision — multiple windows stay declined,
+  because a window is a whole WebView2 process tree (~320 MB working set measured)
+  while extra tabs cost nothing beyond the documents themselves. Switching a tab is
+  `load_path`, so the file watcher, the asset scope and the window title follow the
+  active document without any new Rust state.
+
 ## [0.3.0] - 2026-11-11
 
 ### Added

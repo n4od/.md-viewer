@@ -6,6 +6,7 @@
 :root {
   --measure: 46rem;
   --topbar-h: 48px;
+  --tabs-h: 0px;
   --reading-scale: 1;
   --font-ui: ui-sans-serif, "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system,
     "Helvetica Neue", Arial, sans-serif;
@@ -320,7 +321,7 @@ body {
 /* ---------- welcome ---------- */
 
 .welcome {
-  min-height: calc(100vh - var(--topbar-h));
+  min-height: calc(100vh - var(--topbar-h) - var(--tabs-h));
   display: grid;
   place-items: center;
   padding: 3rem 1.5rem 5rem;
@@ -634,7 +635,7 @@ kbd {
   letter-spacing: -0.015em;
   color: var(--text);
   text-wrap: balance;
-  scroll-margin-top: calc(var(--topbar-h) + 18px);
+  scroll-margin-top: calc(var(--topbar-h) + var(--tabs-h) + 18px);
   position: relative;
 }
 
@@ -1128,11 +1129,106 @@ kbd {
   color: var(--danger);
 }
 
+/* ---------- tabs ---------- */
+
+/* Hidden until a second document is open, so reading one document keeps exactly
+ * the chrome it had before tabs existed. Everything docked below the topbar keys
+ * off --tabs-h, which body.has-tabs raises to the strip's height. */
+.tabs {
+  display: none;
+}
+
+body.has-tabs {
+  --tabs-h: 34px;
+}
+
+body.has-tabs .tabs {
+  position: sticky;
+  top: var(--topbar-h);
+  z-index: 35;
+  display: flex;
+  gap: 3px;
+  align-items: stretch;
+  height: var(--tabs-h);
+  padding: 0 0.6rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  border-bottom: 1px solid var(--line-soft);
+  background: var(--bg);
+  scrollbar-width: thin;
+}
+
+/* A tab is a wrapper holding two sibling buttons: a button may not contain
+ * another button, so the name and the close control sit side by side. */
+.tab {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  max-width: 15rem;
+  border: 1px solid transparent;
+  border-bottom: 0;
+  border-radius: 7px 7px 0 0;
+  background: transparent;
+  color: var(--text-faint);
+}
+
+.tab:hover {
+  background: var(--accent-soft);
+  color: var(--text);
+}
+
+.tab.active {
+  background: var(--bg-elev);
+  border-color: var(--line-soft);
+  color: var(--text);
+}
+
+.tab-open {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  min-width: 0;
+  padding: 0 0.3rem 0 0.7rem;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: 550 0.78rem/1 var(--font-ui);
+  cursor: pointer;
+}
+
+.tab-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 1.2rem;
+  height: 1.2rem;
+  margin-right: 0.3rem;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: inherit;
+  font: 600 0.85rem/1 var(--font-ui);
+  opacity: 0.5;
+  cursor: pointer;
+}
+
+.tab-close:hover {
+  background: var(--accent-soft);
+  opacity: 1;
+}
+
+.tab-open:focus-visible,
+.tab-close:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
 /* ---------- contents drawer ---------- */
 
 #toc-scrim {
   position: fixed;
-  inset: var(--topbar-h) 0 0 0;
+  inset: calc(var(--topbar-h) + var(--tabs-h)) 0 0 0;
   background: rgba(8, 10, 12, 0.22);
   z-index: 48;
   animation: fade 160ms ease;
@@ -1140,7 +1236,7 @@ kbd {
 
 .toc {
   position: fixed;
-  top: var(--topbar-h);
+  top: calc(var(--topbar-h) + var(--tabs-h));
   right: 0;
   bottom: 0;
   width: min(310px, 86vw);

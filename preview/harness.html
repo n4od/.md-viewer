@@ -77,7 +77,16 @@
             if (command === "initial_document") return Promise.resolve(payload);
             if (command === "ready") return Promise.resolve();
             if (command === "reload") return Promise.resolve(Object.assign({}, payload, { words: payload.words + 1 }));
-            if (command === "load_path") return Promise.resolve(Object.assign({}, payload, { name: (args && args.path) || "file.md" }));
+            if (command === "load_path") {
+              // Mirrors Rust: the requested path becomes the document's path, and
+              // the name is the file name, so tab identity and labels behave as
+              // they do in the app.
+              var requested = (args && args.path) || "file.md";
+              return Promise.resolve(Object.assign({}, payload, {
+                path: requested,
+                name: requested.split(/[\\/]/).pop() || requested
+              }));
+            }
             if (command === "open_dialog") return Promise.resolve(null);
             if (command === "open_link") return Promise.resolve({ kind: "external", url: args && args.href });
             if (command === "filter_existing") {
@@ -176,6 +185,8 @@
       </button>
     </div>
   </header>
+
+  <nav id="tabs" class="tabs" aria-label="Open documents" hidden></nav>
 
   <main id="main">
     <section id="welcome" class="welcome">

@@ -88,7 +88,29 @@ The things you reach for while reading, and the render path underneath them.
       document is simply the top of the recent list, which avoids a switch that
       could leave the welcome screen — the only place to turn it off — unreachable.
 
-## Phase 3 — exploring
+## Phase 3 — multiple documents
+
+Several documents open in the one window, as tabs.
+
+Chosen over multiple windows deliberately: a window is a whole WebView2 process
+tree (measured at ~320 MB working set for one), so N windows cost N × that while N
+tabs cost one. This also reverses an earlier decision — "tabs or multiple windows"
+sat under *Not planned* until now — and the multiple-window half stays declined.
+
+- [x] **Open more than one document**: open, close and switch between tabs. The
+      strip appears once a second document is open, so reading one document keeps
+      exactly the chrome it had before; the welcome screen stays the no-document
+      state you see at start-up.
+- [x] **Per-tab reading state**: switching returns to each document's own scroll
+      position (the per-path reading position already provided this), its current
+      section, and its own find query.
+- [x] **Route opens into tabs**: any document that reaches the renderer becomes a
+      tab, so a second double-click on a file activates the tab that already has it
+      instead of replacing the screen, and the recent list opens one.
+- [x] **Not doing**: multiple windows — the same feature at N times the memory, and
+      it would undo the single-instance behaviour.
+
+## Phase 4 — exploring
 
 Not a commitment: each open item here wants a decision before it starts.
 
@@ -118,8 +140,6 @@ Listed so the answer is explicit, not to invite debate:
 - **Printing and PDF export** — a reader with no print action has no route to it.
   Print styles were written and then removed again rather than left in the sheet
   unreachable.
-- **Tabs or multiple windows** — one window, one document, enforced by the
-  single-instance plugin.
 - **Telemetry, accounts, or network calls** at startup. Remote images in a
   document are the user's content, not our traffic.
 - **Bundling a browser engine** (Electron-style) — WebView2 is the platform.
@@ -130,6 +150,6 @@ Listed so the answer is explicit, not to invite debate:
 ## Contributing to the roadmap
 
 Open an issue on GitHub ([@n4od](https://github.com/n4od)) before starting
-anything in *Phase 3*. User-visible changes get an entry in
+anything in *Phase 4*. User-visible changes get an entry in
 [CHANGELOG.md](CHANGELOG.md), and the verification habits in
 [AGENTS.md](AGENTS.md) apply to roadmap work too.
