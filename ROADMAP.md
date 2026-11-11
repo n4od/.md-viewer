@@ -25,7 +25,7 @@ decision, not a pull request.
 ## Shipped — 0.2.0
 
 Released 2026-11-11 ([CHANGELOG](CHANGELOG.md)). Started as small, verifiable
-groundwork and grew into the reading, rendering and print work below.
+groundwork and grew into the reading and rendering work below.
 
 - [x] **Exercise the installer end to end.** Silent install, one
       `MDViewer.Markdown` ProgId pointing at the installed executable, a single
@@ -64,11 +64,6 @@ groundwork and grew into the reading, rendering and print work below.
 - [x] **Recent files housekeeping**: entries whose file no longer exists are
       pruned from the list and from storage on start-up, and there is a "Clear"
       action.
-- [x] **Print styles hardened**: chrome hidden, the light palette forced (a
-      dark-mode reader used to print near-white text on white), sideways-scrolling
-      tables and long code lines wrapped instead of clipped, table headers repeated
-      across pages, breaks avoided inside code, tables and images, and a page margin
-      set.
 - [x] **Per-document reading position**, so reopening a long file returns to
       where you stopped. Written on the leading edge of a scroll burst (so closing
       the window right after scrolling cannot lose it) and refreshed when the burst
@@ -94,11 +89,6 @@ groundwork and grew into the reading, rendering and print work below.
       is one click. Nothing is persisted and there is no auto-open setting: the last
       document is simply the top of the recent list, which avoids a switch that
       could leave the welcome screen — the only place to turn it off — unreachable.
-- [ ] **Print verification and trigger.** Confirm the hardened print styles on real
-      paper, and decide how printing is reached: the app exposes no trigger, so
-      WebView2's own `Ctrl+P` is currently the only path (unverified, and a page
-      cannot reliably cancel that accelerator, so binding it too could open two
-      dialogs).
 
 ## Later — exploring
 
@@ -120,6 +110,9 @@ groundwork and grew into the reading, rendering and print work below.
 Listed so the answer is explicit, not to invite debate:
 
 - **Editing, saving, formatting** — the product is a reader.
+- **Printing and PDF export** — a reader with no print action has no route to it.
+      Print styles were written for 0.2.0 and removed again afterwards rather than
+      left in the sheet unreachable.
 - **Tabs or multiple windows** — one window, one document, enforced by the
   single-instance plugin.
 - **Telemetry, accounts, or network calls** at startup. Remote images in a

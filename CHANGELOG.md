@@ -22,6 +22,13 @@ the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   at v0.1.1 to 82.2 KB of dependency-free code, reaching the old ceiling; the guard
   still rules out a bundler or a framework.
 
+### Removed
+
+- **Print styles.** MD Viewer is a reader and exposes no print action, so the
+  `@media print` rules and the `@page` margin that shipped in 0.2.0 are gone; the
+  stylesheet is now screen-only and about 2.3 KB lighter. Printing was never
+  reachable from the app, so this changes nothing for anyone using it.
+
 ## [0.2.0] - 2026-11-11
 
 ### Added

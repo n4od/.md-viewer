@@ -1381,7 +1381,7 @@ kbd {
   }
 }
 
-/* ---------- motion & print ---------- */
+/* ---------- motion ---------- */
 
 @media (prefers-reduced-motion: reduce) {
   html {
@@ -1396,95 +1396,5 @@ kbd {
   }
   .wordmark-caret {
     animation: none;
-  }
-}
-
-/* @page is a top-level rule; it only affects paged media. */
-@page {
-  margin: 16mm 18mm;
-}
-
-@media print {
-  #topbar,
-  .toc,
-  #toc-scrim,
-  .findbar,
-  #progress,
-  .toast,
-  .dropzone,
-  .heading-anchor,
-  .doc-footer {
-    display: none !important;
-  }
-  body {
-    background: #fff;
-    color: #000;
-    font-size: 11pt;
-  }
-  /* The palette is resolved to a concrete data-theme before first paint, so a
-   * reader in dark mode would otherwise print light text and dark fills. This
-   * block is last in the sheet, so it wins on source order at equal specificity
-   * (`:root[data-theme]` vs `:root[data-theme="dark"]`). */
-  :root,
-  :root[data-theme] {
-    color-scheme: light;
-    --bg: #ffffff;
-    --bg-elev: #ffffff;
-    --bg-sunken: #f4f2ee;
-    --text: #111111;
-    --text-soft: #3d434c;
-    --text-faint: #4b515a;
-    --line: #b9b3a8;
-    --line-soft: #d8d3c9;
-    --accent: #0a5a50;
-    --accent-strong: #0a5a50;
-    --accent-soft: rgba(10, 90, 80, 0.08);
-    --code-bg: #f4f2ee;
-    --shadow: none;
-  }
-  .markdown {
-    max-width: none;
-    padding: 0;
-  }
-  .markdown a {
-    color: inherit;
-  }
-  /* Paper cannot scroll, so anything that scrolls sideways on screen (a wide
-   * table, a long code line) would simply be cut off. Wrap it instead. */
-  .table-scroll,
-  .markdown pre {
-    overflow: visible;
-  }
-  .markdown pre code {
-    white-space: pre-wrap;
-    overflow-wrap: anywhere;
-  }
-  .markdown table {
-    font-size: 9pt;
-  }
-  .markdown th,
-  .markdown td {
-    overflow-wrap: anywhere;
-  }
-  /* Keep a heading with the content beneath it, and repeat a table's header row
-   * on each page the table spans. Chromium honours break-inside; break-after:
-   * avoid is declared for the print paths that do support it. */
-  .markdown h1,
-  .markdown h2,
-  .markdown h3,
-  .markdown h4,
-  .markdown h5,
-  .markdown h6 {
-    page-break-after: avoid;
-    break-after: avoid;
-  }
-  .markdown thead {
-    display: table-header-group;
-  }
-  .markdown tr,
-  .code-block,
-  .table-scroll,
-  .markdown img {
-    break-inside: avoid;
   }
 }
