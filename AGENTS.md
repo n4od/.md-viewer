@@ -230,24 +230,6 @@ backend is one Rust file. Windows is the only exercised target.
   `CHANGELOG.md` — not in that file.) WebView2 dominates (~1.1 s to visible
   window, ~138 MB private for its process tree); the Rust process is ~23 MB.
 
-## Releases
-
-- Publishing goes through the shared script,
-  `D:\CODEs\Skills\github-publish-release\scripts\publish-release.ps1`. Run it without
-  `-Publish` first: that prints the plan, the stored asset names, the SHA-256 of every
-  file and the CI conclusion for the tag, and writes nothing.
-- **Pass the assets with `-AssetsFile`, not `-Assets a, b`.** Under
-  `powershell -ExecutionPolicy Bypass -File` an array argument collapses into one
-  string, so `-Assets "setup.exe", "portable.exe"` silently uploads only the first
-  file — the plan does say `Files 1 to upload`, which is the thing to read.
-- The asset name on GitHub comes from the local file name with spaces turned into dots,
-  so stage copies as `MD Viewer_<version>_x64-setup.exe` and
-  `MD Viewer_<version>_x64-portable.exe` to keep the stored names consistent with older
-  releases.
-- Tag the commit that CI passed on, and build from that same commit: a rebuild after a
-  late fix is cheap (only the touched crate recompiles) and keeps the shipped binary
-  identical to what the tag describes.
-
 ## Docs and versions
 
 - `README.md` is the user-facing source of truth for build/package/association
