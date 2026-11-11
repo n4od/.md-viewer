@@ -59,8 +59,10 @@ Small, verifiable, and mostly finishing what 0.1.0 started.
 - [x] **Find upgrades**: match-case and whole-word toggles (buttons, plus Alt+C /
       Alt+W), remembered across sessions, and a count that reports every occurrence
       even when only the first 1500 are highlighted.
-- [ ] **Heading anchors**: hover link plus "copy link to section", next to the
-      outline.
+- [x] **Heading anchors**: a "#" beside a heading, shown on hover or keyboard
+      focus, copies a link to that section — the file path plus the heading's
+      anchor (`C:\notes\a.md#setup`). The glyph is a CSS pseudo-element so it stays
+      out of the heading's text, and headings keep a clean accessible name.
 - [x] **Recent files housekeeping**: entries whose file no longer exists are
       pruned from the list and from storage on start-up, and there is a "Clear"
       action.

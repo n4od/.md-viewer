@@ -31,6 +31,11 @@ the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   passes). Appending the chunks produces the same DOM as inserting the HTML in one
   go, and a render that is superseded (a newer file opened mid-pump) stops
   cleanly.
+- **Heading anchors.** A "#" appears beside a heading on hover (or keyboard focus)
+  and copies a link to that section — the file path with the heading's anchor, e.g.
+  `C:\notes\a.md#setup`. The glyph is a CSS pseudo-element, so it never leaks into
+  the heading's text (which the ids, the outline labels and find all read), and each
+  heading keeps a clean accessible name rather than announcing the copy link.
 
 ### Changed
 

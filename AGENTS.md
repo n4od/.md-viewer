@@ -48,7 +48,13 @@ backend is one Rust file. Windows is the only exercised target.
 - Render path: `pulldown-cmark` (GFM) → HTML string → `ammonia` allow-list →
   `Document` payload to the webview. **Heading ids are added in JS**
   (`enhance()`), because the renderer emits plain `<h1>`; the outline and
-  in-document anchors depend on that.
+  in-document anchors depend on that. `enhance()` also adds the hover "#" anchor:
+  its glyph is a CSS pseudo-element so it never enters the heading's
+  `textContent` (ids, outline labels and find read that text), and the heading's
+  `aria-label` is pinned to its visible text so the link is not appended to every
+  heading a screen reader announces. The anchor's offset is `rem`, not `em` — an
+  `em` offset scales with the heading and pushes an `h1`'s glyph past the article's
+  padding.
 - Documents above 1 MiB of HTML are attached in 128 KiB chunks by
   `renderProgressive()`; `render()` (the small path) and it share `finishRender()`
   for everything that needs the whole document in the DOM. `enhance(root, state)`
