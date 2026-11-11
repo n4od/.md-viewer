@@ -28,7 +28,7 @@ if ([string]::IsNullOrEmpty($ExePath)) {
     $ExePath = Join-Path $repoRoot 'src-tauri\target\release\mdviewer.exe'
 }
 if ([string]::IsNullOrEmpty($Document)) {
-    $Document = Join-Path $repoRoot 'sample.md'
+    $Document = Join-Path $repoRoot 'samples\sample.md'
 }
 if (-not (Test-Path $ExePath)) { throw "Not built yet: $ExePath" }
 if (-not (Test-Path $Document)) { throw "Missing test document: $Document" }

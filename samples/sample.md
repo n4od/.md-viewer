@@ -8,7 +8,7 @@ tags: [demo, markdown]
 This file exists to exercise every rendering path in one pass. Double-click it
 in Explorer (after registering the association) or drop it on the window.
 
-![Application icon](src-tauri/icons/icon.png)
+![Application icon](../src-tauri/icons/icon.png)
 
 ## Text, emphasis and inline code
 
@@ -60,7 +60,7 @@ fn parse_cli_path(args: &[String]) -> Option<PathBuf> {
 ```
 
 ```powershell
-npm run tauri dev -- -- "sample.md"
+npm run tauri dev -- -- "samples\sample.md"
 ```
 
 ### Blockquotes and alerts
@@ -80,7 +80,7 @@ npm run tauri dev -- -- "sample.md"
 
 Images resolve relative to this file's folder:
 
-![Icon, again](src-tauri/icons/32x32.png)
+![Icon, again](../src-tauri/icons/32x32.png)
 
 ---
 

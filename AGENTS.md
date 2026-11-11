@@ -25,7 +25,7 @@ backend is one Rust file. Windows is the only exercised target.
 | One test | `cargo test --manifest-path src-tauri/Cargo.toml open_command -- --nocapture` |
 | UI iteration | `node scripts/dev-server.js` → <http://localhost:8123/preview/harness.html> |
 | Desktop layout | <http://localhost:8123/preview/wide.html> (1280×900 iframe) |
-| Manual doc | `src-tauri\target\release\mdviewer.exe sample.md` (existing binary only) |
+| Manual doc | `src-tauri\target\release\mdviewer.exe samples\sample.md` (existing binary only) |
 
 - Always invoke scripts as `powershell -ExecutionPolicy Bypass -File scripts\...`.
   `npm.ps1`/`npx.ps1` are blocked by execution policy on this machine — use
@@ -203,11 +203,12 @@ backend is one Rust file. Windows is the only exercised target.
 
 ## Verification habits
 
-- `sample.md` + `sample-notes.md` exercise every renderer path (tables, tasks,
-  alerts, footnotes, definition lists, relative links, local images);
-  `highlight-demo.md` does the same for fenced code — one block per language the
+- `samples/sample.md` + `samples/sample-notes.md` exercise every renderer path (tables,
+  tasks, alerts, footnotes, definition lists, relative links, local images);
+  `samples/highlight-demo.md` does the same for fenced code — one block per language the
   highlighter knows, plus the traps (markup inside a string, an unknown language, no
-  language tag at all).
+  language tag at all). The images in `sample.md` point at `../src-tauri/icons/…`, so
+  keep that relative path in step if either folder moves.
 - Preferences live in `localStorage` under `mdviewer.*`: `theme`, `scale`, `width`,
   `resume`, `reopen`, `geometry`, `find`, `recent`, `positions` and `tabs` (the stored
   session). The settings panel
