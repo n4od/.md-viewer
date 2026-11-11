@@ -66,8 +66,13 @@ Small, verifiable, and mostly finishing what 0.1.0 started.
 - [x] **Recent files housekeeping**: entries whose file no longer exists are
       pruned from the list and from storage on start-up, and there is a "Clear"
       action.
-- [ ] **Print/PDF polish**: verify page breaks for code blocks and tables, and
-      hide the outline/find chrome reliably (print styles exist; untested on paper).
+- [ ] **Print/PDF**: the print styles are hardened — chrome hidden, the light
+      palette forced (a dark-mode reader used to print near-white text on white),
+      sideways-scrolling tables and long code lines wrapped instead of clipped,
+      table headers repeated across pages, breaks avoided inside code, tables and
+      images, and a page margin set. Still open, and needing a real machine: verify
+      the output on paper, and decide the trigger — the app exposes none, so
+      WebView2's own `Ctrl+P` is currently the only path (unverified here).
 - [x] **Per-document reading position**, so reopening a long file returns to
       where you stopped. Written on the leading edge of a scroll burst (so closing
       the window right after scrolling cannot lose it) and refreshed when the burst

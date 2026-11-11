@@ -60,6 +60,17 @@ the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   task), and delegating the code-copy buttons or building the toolbar with
   `innerHTML` saved nothing and cost more respectively.
 
+### Fixed
+
+- **Printing in dark mode.** The print styles now force the light palette, so a
+  reader in dark mode no longer prints near-white text on white paper (the palette
+  is resolved to a concrete `data-theme` before first paint, so the print block has
+  to override `:root[data-theme]`, not just `body`).
+- **Print clipping.** Wide tables and long code lines scrolled sideways on screen
+  and were simply cut off on paper; they now wrap (tables also drop to 9pt, and
+  their header rows repeat across pages). Breaks are avoided inside code blocks,
+  tables, rows and images, and a page margin is set.
+
 ## [0.1.1] - 2026-11-11
 
 ### Added
