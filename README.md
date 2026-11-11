@@ -585,6 +585,10 @@ Two notes for whoever adds a check:
   check awaits that event before asserting.
 - **Clear `mdviewer.*` from `localStorage` first.** The page shares a profile with the
   harness, so without that a previous run's theme or resume setting leaks in.
+- **Mark the stage you are entering.** A stalled `await` cannot be caught, so the suite
+  fails after 20 seconds of idle time and names the stage in `data-stage`; CI prints
+  that instead of a bare "running". Virtual time only advances while the page is idle,
+  so the watchdog never fires just because the checks are slow.
 
 ### Troubleshooting
 

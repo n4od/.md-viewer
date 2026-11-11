@@ -21,6 +21,11 @@ the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `data-result="pass"`, so a front-end regression now breaks the build instead of
   waiting for someone to open the harness. Edge is tried first, then Chrome, and the
   browser is given a three-minute ceiling so a hang cannot stall the job.
+- The suite records the stage it is in and fails after 20 seconds of idle time, so a
+  stall says *where* it stopped instead of leaving the page saying "running" — which is
+  how the first CI run failed: the dumped DOM had no result and nothing to act on. The
+  CI step now prints the page state, the stage and the tail of the check log, and tries
+  every installed browser rather than only the first one it finds.
 
 ## [0.3.4] - 2026-11-11
 

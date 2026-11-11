@@ -50,6 +50,7 @@ jobs:
         shell: pwsh
         run: |
           $server = Start-Process -FilePath "node" -ArgumentList "scripts/dev-server.js", "8123" -PassThru -WindowStyle Hidden
+          $profile = Join-Path $env:TEMP "mdviewer-test-profile"
           try {
             # The server binds 127.0.0.1 only, so do not use "localhost" here.
             $base = "http://127.0.0.1:8123"
@@ -63,46 +64,69 @@ jobs:
             }
             if (-not $ready) { throw "the preview server never came up on $base" }
 
-            $candidates = @(
-              "$env:ProgramFiles(x86)\Microsoft\Edge\Application\msedge.exe",
-              "$env:ProgramFiles\Microsoft\Edge\Application\msedge.exe",
-              "$env:ProgramFiles\Google\Chrome\Application\chrome.exe",
-              "$env:LOCALAPPDATA\Google\Chrome\Application\chrome.exe"
-            )
-            $browser = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
-            if (-not $browser) { throw "neither Edge nor Chrome is installed on the runner" }
-            "browser: $browser"
+            # ${env:...} is required for the x86 name: "$env:ProgramFiles(x86)" parses as
+            # $env:ProgramFiles followed by a literal "(x86)", silently testing a path that
+            # does not exist. Edge lives in Program Files (x86) on every x64 Windows.
+            $browsers = @(
+              "${env:ProgramFiles(x86)}\Microsoft\Edge\Application\msedge.exe",
+              "${env:ProgramFiles}\Microsoft\Edge\Application\msedge.exe",
+              "${env:ProgramFiles}\Google\Chrome\Application\chrome.exe",
+              "${env:LOCALAPPDATA}\Google\Chrome\Application\chrome.exe"
+            ) | Where-Object { Test-Path $_ }
+            if (-not $browsers) { throw "neither Edge nor Chrome is installed on the runner" }
 
             $dom = Join-Path $env:TEMP "mdviewer-tests-dom.html"
             $errors = Join-Path $env:TEMP "mdviewer-tests-dom.err"
-            $profile = Join-Path $env:TEMP "mdviewer-test-profile"
-            $arguments = @(
-              "--headless=new", "--disable-gpu", "--no-first-run", "--no-default-browser-check",
-              "--disable-logging", "--log-level=3",
-              "--user-data-dir=`"$profile`"", "--virtual-time-budget=30000",
-              "--dump-dom", "$base/preview/tests.html"
-            )
-            # Chrome and Edge are GUI-subsystem binaries: without redirection their
-            # stdout goes nowhere, so --dump-dom writes to a file instead.
-            $process = Start-Process -FilePath $browser -ArgumentList $arguments `
-              -RedirectStandardOutput $dom -RedirectStandardError $errors -PassThru -NoNewWindow
-            if (-not $process.WaitForExit(180000)) {
-              $process.Kill()
-              throw "the headless browser did not exit within three minutes"
+            $page = $null
+            foreach ($browser in $browsers) {
+              "browser: $browser"
+              # A profile left behind by a previous candidate would be rejected; start clean.
+              Remove-Item $profile -Recurse -Force -ErrorAction SilentlyContinue
+              $arguments = @(
+                "--headless=new", "--disable-gpu", "--no-first-run", "--no-default-browser-check",
+                "--disable-logging", "--log-level=3",
+                "--user-data-dir=`"$profile`"", "--virtual-time-budget=60000",
+                "--dump-dom", "$base/preview/tests.html"
+              )
+              # Both browsers are GUI-subsystem binaries: without redirection their stdout
+              # goes nowhere, so --dump-dom writes to a file instead of a pipe.
+              $process = Start-Process -FilePath $browser -ArgumentList $arguments `
+                -RedirectStandardOutput $dom -RedirectStandardError $errors -PassThru -NoNewWindow
+              if (-not $process.WaitForExit(180000)) {
+                $process.Kill()
+                throw "the headless browser did not exit within three minutes"
+              }
+              $page = Get-Content $dom -Raw -ErrorAction SilentlyContinue
+
+              # Enough to diagnose a stall without the raw DOM: the state the page reached
+              # and how far its check log got. tests.html names the stage it is in, and its
+              # watchdog turns a hang into a failure rather than a forever "running".
+              if ($page -match 'data-result="([a-z]+)"') { "  state:   " + $Matches[1] }
+              if ($page -match 'data-stage="([a-z ]+)"')   { "  stage:   " + $Matches[1] }
+              if ($page -match '(?s)<p id="summary"[^>]*>(.*?)</p>') { "  summary: " + ($Matches[1] -replace '\s+', ' ') }
+              if ($page -match '(?s)<pre id="log">(.*?)</pre>') {
+                $tail = ($Matches[1] -split "`n") | Where-Object { $_.Trim() } | Select-Object -Last 4
+                if ($tail) { "  log:     " + ($tail -join " | ") }
+              }
+              if ($page -notmatch 'data-result="(pass|fail)"') {
+                "  dom:     " + $(if ($page) { "$($page.Length) chars" } else { "empty" }) + ", browser exit " + $process.ExitCode
+                Get-Content $errors -ErrorAction SilentlyContinue | Select-Object -First 6 | ForEach-Object { "  stderr:  " + $_ }
+                continue
+              }
+              break
             }
 
-            $page = Get-Content $dom -Raw -ErrorAction SilentlyContinue
-            if (-not $page) { throw "the browser produced no DOM (stderr: $errors)" }
-            $match = [regex]::Match($page, 'RESULT: (PASS|FAIL) (\d+)/(\d+)')
-            if (-not $match.Success) { throw "the test page never reported a result (DOM: $dom)" }
-            $match.Value
+            if (-not $page -or $page -notmatch 'data-result="(pass|fail)"') {
+              throw "no installed browser produced a finished test page"
+            }
+            [regex]::Match($page, 'RESULT: (PASS|FAIL)[^<]*').Value
             if ($page -notmatch 'data-result="pass"') {
-              [regex]::Matches($page, 'FAIL [^<\r\n]{0,120}') | ForEach-Object { "  " + $_.Value }
+              [regex]::Matches($page, 'FAIL [^<\r\n]{0,140}') | ForEach-Object { "  " + $_.Value }
               throw "front-end tests failed"
             }
           } finally {
             Stop-Process -Id $server.Id -Force -ErrorAction SilentlyContinue
-            Remove-Item (Join-Path $env:TEMP "mdviewer-test-profile") -Recurse -Force -ErrorAction SilentlyContinue
+            Remove-Item $profile -Recurse -Force -ErrorAction SilentlyContinue
           }
 
       - name: Rust toolchain

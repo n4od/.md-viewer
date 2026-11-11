@@ -36,6 +36,16 @@
   const log = document.getElementById("log");
   const summary = document.getElementById("summary");
   const results = [];
+  let stage = "startup";
+
+  // A hang must not look like a slow run: CI only dumps the DOM, so an await that never
+  // settles would leave the page saying "running" with no clue where it stopped. Virtual
+  // time only advances while the page is idle, so this fires on a stall, not on work.
+  const watchdog = setTimeout(function () {
+    summary.dataset.result = "fail";
+    summary.textContent = "RESULT: FAIL timed out at stage: " + stage + " (" + results.length + " checks recorded)";
+  }, 20000);
+  function mark(next) { stage = next; summary.dataset.stage = next; }
 
   function record(name, ok, detail) {
     results.push({ name, ok: !!ok });
@@ -53,6 +63,7 @@
     .filter(function (key) { return key.indexOf("mdviewer.") === 0; })
     .forEach(function (key) { localStorage.removeItem(key); });
 
+  mark("fixture load");
   const frame = document.createElement("iframe");
   frame.id = "fixture";
   frame.title = "fixture";
@@ -76,9 +87,11 @@
   };
 
   // The startup document is asynchronous; let it land.
+  mark("startup document");
   for (let i = 0; i < 400 && !q("#doc h1"); i++) await tick();
 
   /* ---------- the rendered document ---------- */
+  mark("rendered document");
   ok("sample renders", q("#doc h1"), "no h1 in #doc");
 
   const headings = qa("#doc h1,#doc h2,#doc h3,#doc h4,#doc h5,#doc h6");
@@ -108,11 +121,13 @@
   ok("local image rewritten to the asset URL", image && image.getAttribute("src").indexOf("src-tauri/icons/icon.png") !== -1, image ? image.getAttribute("src") : "no image");
 
   /* ---------- pinned section title ---------- */
+  mark("pinned title");
   const bar = doc.getElementById("sticky-head");
   ok("pinned title is visible with a document", bar && win.getComputedStyle(bar).display !== "none");
   ok("pinned title has text", bar && bar.textContent.trim().length > 0);
 
   /* ---------- image lightbox ---------- */
+  mark("lightbox");
   const box = doc.getElementById("lightbox");
   image.click();
   await tick();
@@ -122,6 +137,7 @@
   ok("clicking the backdrop closes the lightbox", box.hidden);
 
   /* ---------- tabs ---------- */
+  mark("tabs");
   const strip = doc.getElementById("tabs");
   ok("no tab strip for a single document", strip.hidden && strip.querySelectorAll(".tab").length === 0);
 
@@ -141,6 +157,7 @@
   ok("the neighbour is on screen", q("#doc h1"));
 
   /* ---------- settings ---------- */
+  mark("settings");
   const panel = doc.getElementById("settings");
   const gear = doc.getElementById("btn-settings");
   gear.click();
@@ -185,6 +202,7 @@
   is("the scroll lock is released", win.getComputedStyle(doc.documentElement).overflow, "visible");
 
   /* ---------- per-document reading position ---------- */
+  mark("reading position");
   let tall = "";
   for (let i = 0; i < 200; i++) tall += '<h2 id="t' + i + '">Section ' + i + "</h2><p>Filler " + i + ".</p>";
   win.localStorage.setItem("mdviewer.positions", JSON.stringify({ "C:/notes/tall.md": 400 }));
@@ -193,6 +211,7 @@
   ok("a stored reading position is restored", Math.abs(win.scrollY - 400) <= 2, "scrollY " + win.scrollY);
 
   /* ---------- progressive rendering ---------- */
+  mark("progressive rendering");
   let big = "";
   let sections = 0;
   while (big.length <= 1048576) {
@@ -208,13 +227,15 @@
   ok("its last heading kept its id", !!doc.getElementById("b" + (sections - 1)));
 
   /* ---------- report ---------- */
+  mark("report");
+  clearTimeout(watchdog);
   const failed = results.filter(function (r) { return !r.ok; }).length;
   summary.dataset.result = failed ? "fail" : "pass";
   summary.textContent = "RESULT: " + (failed ? "FAIL" : "PASS") + " " + (results.length - failed) + "/" + results.length;
 })().catch(function (error) {
   const summary = document.getElementById("summary");
   summary.dataset.result = "fail";
-  summary.textContent = "RESULT: FAIL harness error: " + ((error && error.message) || error);
+  summary.textContent = "RESULT: FAIL harness error at stage \"" + (summary.dataset.stage || "startup") + "\": " + ((error && error.message) || error);
 });
 </script>
 </body>
