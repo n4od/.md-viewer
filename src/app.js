@@ -185,6 +185,7 @@
       var list = $("recent-list");
       var items = readRecent();
       list.textContent = "";
+      renderReopen();
       if (!items.length) { wrap.hidden = true; return; }
       items.forEach(function (item) {
         var btn = document.createElement("button");
@@ -202,6 +203,26 @@
         list.appendChild(btn);
       });
       wrap.hidden = false;
+    }
+
+    /* Session continuity: with no file on the command line, the welcome screen
+     * offers the document that was last on screen as the lead action. Nothing is
+     * stored — the last document is simply the top of the recent list — so there
+     * is no switch to get stuck behind. */
+    function renderReopen() {
+      var reopen = $("welcome-reopen");
+      var open = $("welcome-open");
+      var last = readRecent()[0];
+      if (!last || !last.path) {
+        reopen.hidden = true;
+        open.className = "btn-primary";
+        return;
+      }
+      $("reopen-name").textContent = last.name || last.path;
+      reopen.title = "Reopen " + last.path;
+      reopen.hidden = false;
+      // Exactly one primary action on screen: resume leads, opening steps back.
+      open.className = "btn-ghost";
     }
 
     function showWelcome() {
@@ -1127,6 +1148,10 @@
 
     $("btn-open").addEventListener("click", openDialog);
     $("welcome-open").addEventListener("click", openDialog);
+    $("welcome-reopen").addEventListener("click", function () {
+      var last = readRecent()[0];
+      if (last && last.path) openPath(last.path);
+    });
     $("error-retry").addEventListener("click", reloadFile);
     $("recent-clear").addEventListener("click", function () {
       try { localStorage.removeItem(RECENT_KEY); } catch (_) {}

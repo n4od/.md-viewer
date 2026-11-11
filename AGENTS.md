@@ -31,7 +31,8 @@ backend is one Rust file. Windows is the only exercised target.
   `npm.cmd` / `npx.cmd`, and note `node_modules` is absent, so `npm run ...`
   needs `npm install` first.
 - CI lives in `.github/workflows/ci.yml` (windows-latest: a **frontend size budget**
-  — `src/` ≤ 80 KB, `app.js` ≤ 46 KB — then `cargo check --all-targets`, then
+  — `src/` ≤ 88 KB, `app.js` ≤ 52 KB, raised from 80/46 KB when the 0.2.0 batch
+  reached the old ceiling — then `cargo check --all-targets`, then
   `cargo test`). There is still no lint/format/typecheck config — don't invent
   `npm run lint`; `cargo check` + tests are the gate. The size budget is the guard
   behind "three static files, no framework": if a change needs more room, raise it

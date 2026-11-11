@@ -7,6 +7,21 @@ the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **Reopen the last document.** Starting with no file on the command line, the
+  welcome screen offers the document that was last on screen as its lead action
+  ("Reopen sample.md"), so resuming is one click. The last document is simply the
+  top of the recent list — nothing extra is stored, and there is no auto-open
+  setting that could leave you with no way to turn it off.
+
+### Changed
+
+- The CI frontend size budget moves from 80/46 KB to 88/52 KB (`src/` total and
+  `app.js`). The 0.2.0 batch of user-facing features took the frontend from 60.7 KB
+  at v0.1.1 to 82.2 KB of dependency-free code, reaching the old ceiling; the guard
+  still rules out a bundler or a framework.
+
 ## [0.2.0] - 2026-11-11
 
 ### Added

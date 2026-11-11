@@ -89,8 +89,11 @@ groundwork and grew into the reading, rendering and print work below.
 
 ## Next — 0.3
 
-- [ ] **Session continuity.** With no file argument, offer to reopen the last
-      document (opt-in, stored alongside the recent files).
+- [x] **Session continuity.** With no file on the command line, the welcome screen
+      offers the last document as its lead action ("Reopen sample.md"), so resuming
+      is one click. Nothing is persisted and there is no auto-open setting: the last
+      document is simply the top of the recent list, which avoids a switch that
+      could leave the welcome screen — the only place to turn it off — unreachable.
 - [ ] **Print verification and trigger.** Confirm the hardened print styles on real
       paper, and decide how printing is reached: the app exposes no trigger, so
       WebView2's own `Ctrl+P` is currently the only path (unverified, and a page

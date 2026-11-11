@@ -394,7 +394,10 @@ body {
   color: #10201d;
 }
 
-.btn-primary svg {
+/* Both button styles carry an icon: #welcome-open is a ghost whenever the welcome
+ * screen offers a resume, so the sizing has to cover the ghost class too. */
+.btn-primary svg,
+.btn-ghost svg {
   width: 17px;
   height: 17px;
   fill: none;
@@ -500,6 +503,15 @@ kbd {
   margin-top: 2.6rem;
   padding-top: 1.3rem;
   border-top: 1px solid var(--line-soft);
+}
+
+/* The resume action reads the file name, which can be long; clip it rather than
+ * letting the button stretch the welcome column. */
+#reopen-name {
+  max-width: 20ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .recent-head {
