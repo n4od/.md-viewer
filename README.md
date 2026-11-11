@@ -208,13 +208,15 @@ Commands (webview → Rust):
 | :-- | :-- | :-- |
 | `ready` | — | "first paint done, show the window". |
 | `initial_document` | `Document?` | The document rendered at startup. |
-| `load_path(path)` | `Document` | Recent-files list, relative links. |
+| `load_path(path)` | `Document` | Recent-files list, relative links, switching tabs. |
 | `reload` | `Document?` | `Ctrl+R` / `F5`. |
 | `filter_existing(paths)` | `Vec<String>` | Prunes recent entries whose file has been moved or deleted. |
 | `open_dialog` | `Document?` | `Ctrl+O` (and drag & drop, which goes through the same path). |
 | `open_link(href)` | `LinkOutcome` | Link clicks: external → OS browser, sibling `.md` → open in place, missing → notice. |
-| `make_default` | `DefaultReport` | Registers MD Viewer as a `.md` handler, tells the shell, then shows the Windows picker. |
-| `default_status` | `DefaultStatus` | Whether MD Viewer currently owns `.md` — drives the empty-state line and button. |
+| `make_default` | `DefaultReport` | Registers MD Viewer as a `.md` handler (writing the document icon out too), tells the shell, then shows the Windows picker. |
+| `default_status` | `DefaultStatus` | Whether MD Viewer currently owns `.md`, and which extensions it claims — drives the empty-state line and the Settings panel. |
+| `app_version` | `String` | The About line in Settings, read from the binary so it cannot drift. |
+| `set_remember_geometry(on)` | — | Whether to carry the window's size and position across launches. |
 
 Events (Rust → webview):
 
@@ -226,12 +228,17 @@ Events (Rust → webview):
 | `md://notice` | `{ message }` | "Reloaded from disk" |
 | `md://drag` | `{ active }` | drag hover overlay |
 
-### 3.4 One instance, many files
+### 3.4 One instance, many tabs
 
 `tauri-plugin-single-instance` is registered *first* (as its docs require). When
 a second launch happens — the user double-clicks another `.md` file while the
 viewer is running — Windows forwards the new process's argv to the running
 instance, which loads the file, emits `md://open`, and focuses the window.
+
+The frontend turns that document into a tab. Opening a file that is already a tab
+activates it instead of duplicating it, so a second double-click is safe. Rust still
+tracks exactly one active document: switching a tab is just `load_path`, which
+re-points the file watcher, the asset scope and the window title at that document.
 
 ### 3.5 Live reload
 
@@ -518,6 +525,13 @@ caveats that always apply to a fresh Windows instance:
 | Find | `Ctrl+F`, type `markdown` → highlights and `n/N` counter; Enter jumps, Esc closes. |
 | Outline | `Ctrl+B` opens the drawer, the current section is highlighted while scrolling. |
 | Empty/error states | Open a file, then rename it on disk and press `F5` → an inline error, the app stays usable. |
+| Tabs | With a document open, double-click a second `.md` → the tab strip appears; switching restores each document's scroll position and find query, and the `×` closes one. |
+| Syntax highlighting | Open `highlight-demo.md` → fenced code is coloured per language; the unknown-language and untagged fences stay plain. |
+| Settings | The gear opens the panel. Theme, text size and reading width apply at once and survive a restart; Esc, the close button or a click outside dismisses it, and the page behind does not scroll while it is open. |
+| Pinned section title | Scroll a long document → the bar under the toolbar names the section you are in, agreeing with the outline highlight. |
+| Image lightbox | Click an image in `sample.md` → it opens at full size over a dimmed backdrop; Esc or a click outside closes it. |
+| Window geometry | Resize and move the window, close it, relaunch → it returns to the same size and place (`%LOCALAPPDATA%\mdviewer\window.json`, switched in Settings). |
+| File icon | In Explorer a `.md` shows the document page icon, not the app tile. After installing, run the app once: the installer writes the app icon on the ProgId and the first launch corrects it. |
 | Command line | `src-tauri\target\release\mdviewer.exe --version` prints `mdviewer 0.3.4`; `--register-default` exits 0 and points the `MDViewer.Markdown` ProgId at that executable. |
 | Tests | `cd src-tauri; cargo test` → 33 tests over argument parsing and CLI flags, decoding, rendering, sanitising, alignment, image sizing, syntax highlighting, window geometry, the embedded file icon, recent-file filtering, installer/config consistency and render speed, plus one opt-in registry test. |
 
@@ -542,14 +556,14 @@ Reproduce everything below with:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts\measure.ps1      # time + memory
-cargo test --manifest-path src-tauri\Cargo.toml                   # 23 tests, 1 ignored
+cargo test --manifest-path src-tauri\Cargo.toml                   # 33 tests, 1 ignored
 cargo test --release rendering_a_large_document_stays_fast -- --nocapture
 ```
 
 ### Time to a visible window
 
-Across runs: **891–1118 ms** to a fully painted window. `scripts/measure.ps1`
-records the latest run, with the per-process breakdown, in
+Across runs: **~0.9–1.2 s** to a fully painted window (the latest run took 1125 ms).
+`scripts/measure.ps1` records the latest run, with the per-process breakdown, in
 [PERFORMANCE.md](PERFORMANCE.md).
 
 That is the *whole* startup: process creation, WebView2 environment, HTML/CSS/JS
@@ -562,17 +576,20 @@ same optimisation settings the shipped binary uses):
 
 | Document | Markdown in | HTML out | Time |
 | :-- | --: | --: | --: |
-| Large synthetic document | 124 KiB | 322 KiB | **56.7 ms** |
+| Large synthetic document | 124 KiB | 357 KiB | **~94 ms** |
 | `sample.md` | 8 KiB | ~21 KiB | ~4 ms |
-| Same large document, dev profile | 124 KiB | 322 KiB | 152.9 ms |
+
+The larger HTML and the higher time are syntax highlighting: the renderer wraps code
+tokens in spans. The guard-rail test fails above 750 ms, so this is a regression
+threshold rather than a note.
 
 ### Memory
 
 | Component | Processes | Working set (sum) | Private bytes (sum) |
 | :-- | --: | --: | --: |
 | `mdviewer.exe` (the app) | 1 | **22–23 MB** | **~5 MB** |
-| `msedgewebview2.exe` (browser, renderer, GPU, utility, crashpad) | 6 | 291–298 MB | ~132 MB |
-| Total | 7 | 313–322 MB | ~137 MB |
+| `msedgewebview2.exe` (browser, renderer, GPU, utility, crashpad) | 6 | 291–301 MB | ~138 MB |
+| Total | 7 | 313–324 MB | ~143 MB |
 
 Working set is summed across processes, so shared pages (the same DLLs and font
 data mapped into every Chromium process) are counted several times; private
@@ -586,9 +603,9 @@ Both are unreachable for any WebView2-based shell, and this build does not
 pretend otherwise. WebView2 itself — spawning the browser process, the renderer,
 the GPU process and the utility process, then launching a document — is the
 dominant term in both numbers, and it is not under the app's control. What *is*
-under the app's control has been kept minimal: a 4.3 MB single binary, no
+under the app's control has been kept minimal: a 4.4 MB single binary, no
 bundler, no framework, no web fonts, no network requests at start, one process
-for app logic, and a ~57 ms render for a 124 KiB document.
+for app logic, and a ~94 ms render for a 124 KiB document.
 
 If those two budgets are hard requirements, the honest options are:
 
@@ -596,7 +613,7 @@ If those two budgets are hard requirements, the honest options are:
    `slint`) with a Markdown-to-widgets renderer starts in tens of milliseconds
    and stays under 30 MB — at the cost of HTML/CSS fidelity and the ability to
    render arbitrary raw HTML in documents.
-2. **Keep the webview, change the target.** Accept roughly 0.9–1.1 s and ~137 MB
+2. **Keep the webview, change the target.** Accept roughly 0.9–1.2 s and ~143 MB
    private, and
    spend the effort on making the first frame feel instant, which is what the
    hidden-until-first-paint design does: there is no white flash and no empty
