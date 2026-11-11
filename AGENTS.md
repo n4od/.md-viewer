@@ -162,8 +162,8 @@ backend is one Rust file. Windows is the only exercised target.
 - Measured facts live in `PERFORMANCE.md`; don't restate performance claims that
   aren't there. (That file is regenerated wholesale by `measure.ps1 -WriteReport`
   and covers startup and memory, so render-path numbers belong with the change —
-  `CHANGELOG.md` — not in that file.) WebView2 dominates (~0.9–1.0 s to visible
-  window, ~132 MB private for its process tree); the Rust process is ~22 MB.
+  `CHANGELOG.md` — not in that file.) WebView2 dominates (~1.1 s to visible
+  window, ~136 MB private for its process tree); the Rust process is ~22 MB.
 
 ## Docs and versions
 
