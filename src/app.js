@@ -44,7 +44,6 @@
 
   function applyTheme() {
     document.documentElement.setAttribute("data-theme", resolvedTheme());
-    document.documentElement.setAttribute("data-theme-pref", themePref);
   }
 
   function applyScale(scale) {
@@ -1254,16 +1253,10 @@
     var order = ["auto", "light", "dark"];
     var themeLabels = { auto: "system", light: "light", dark: "dark" };
 
-    function syncThemeButton() {
-      $("btn-theme").title = "Theme: " + themeLabels[themePref] + " (Ctrl+Shift+L)";
-      $("btn-theme").setAttribute("aria-label", "Theme: " + themeLabels[themePref] + " (click to change)");
-    }
-
     function setTheme(pref) {
       themePref = order.indexOf(pref) === -1 ? "auto" : pref;
       setPref(THEME_KEY, themePref);
       applyTheme();
-      syncThemeButton();
     }
 
     function cycleTheme() {
@@ -1328,13 +1321,23 @@
           .catch(noop);
       }
       $("settings").showModal();
+      document.documentElement.classList.add("modal-open");
     }
 
     $("btn-settings").addEventListener("click", openSettings);
 
-    // Native dialogs usually restore focus to the opener; this makes it certain.
+    // Native dialogs usually restore focus to the opener; this makes it certain. The
+    // scroll lock is released here, so one handler covers the close button, Esc and
+    // the backdrop.
     $("settings").addEventListener("close", function () {
+      document.documentElement.classList.remove("modal-open");
       $("btn-settings").focus();
+    });
+
+    // The form fills the dialog, so a click whose target is the dialog itself came
+    // from the backdrop.
+    $("settings").addEventListener("click", function (event) {
+      if (event.target === $("settings")) $("settings").close();
     });
 
     ["auto", "light", "dark"].forEach(function (name) {
@@ -1454,7 +1457,6 @@
 
     /* ---------- wire the chrome ---------- */
 
-    $("btn-open").addEventListener("click", openDialog);
     $("welcome-open").addEventListener("click", openDialog);
     $("welcome-reopen").addEventListener("click", function () {
       var last = readRecent()[0];
@@ -1532,9 +1534,6 @@
       scrollToId(link.getAttribute("href").slice(1));
       if (window.matchMedia("(max-width: 1100px)").matches) closeToc();
     });
-    $("btn-theme").addEventListener("click", cycleTheme);
-    $("btn-theme").title = "Theme: " + themeLabels[themePref] + " (Ctrl+Shift+L)";
-    $("btn-theme").setAttribute("aria-label", "Theme: " + themeLabels[themePref] + " (click to change)");
     $("skip-link").addEventListener("click", function (event) {
       event.preventDefault();
       docEl.focus();

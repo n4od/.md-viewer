@@ -16,7 +16,11 @@ the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   types it claims with the default-app action, whether window size and position are
   remembered, and an About line with the running version. It is a native `<dialog>`,
   so Esc and focus handling come from the platform, and the two actions it shares
-  with the welcome screen reuse those buttons rather than duplicating them.
+  with the welcome screen reuse those buttons rather than duplicating them. The
+  separate theme button is gone, since the panel now owns it; `Ctrl+Shift+L` still
+  cycles the theme. The toolbar also lost its open-file button — `Ctrl+O`, drag and
+  drop, the welcome screen and Explorer all still open files, and the toolbar is down
+  to two buttons.
 - **"Reopen the last document at start" is now a real setting.** It had been left as
   a one-shot offer because a persisted switch had nowhere to live; the panel is a
   permanent place to turn it back off.
@@ -26,6 +30,19 @@ the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - The CI frontend size budget moves from 96/56 KB to 108/62 KB, because the settings
   panel is the largest single frontend change so far. The guard still rules out a
   bundler or a framework.
+- The toolbar is down to two buttons — contents and settings. The theme button went
+  with the setting it duplicated, and the open-file button went because `Ctrl+O`,
+  drag and drop, the welcome screen and Explorer already cover opening a file.
+
+### Fixed
+
+- **The reading pane no longer shifts sideways** when the scrollbar appears or
+  disappears. Opening the settings dialog caused it every time, by hiding the
+  scrollbar while it locked scrolling; the same jump happened whenever a short
+  document followed a long one. `scrollbar-gutter: stable` reserves the space
+  instead, so nothing moves either way.
+- **The settings dialog no longer scrolls the page behind it**, and a click outside
+  it dismisses it, as Esc and the close button already did.
 
 ## [0.3.2] - 2026-11-11
 

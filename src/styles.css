@@ -87,6 +87,11 @@
 html {
   scroll-behavior: smooth;
   -webkit-text-size-adjust: 100%;
+  /* Reserve the scrollbar's width whether or not it is showing. Without this the
+   * centred article shifts sideways whenever the scrollbar appears (a short
+   * document after a long one) or disappears — which is what the settings dialog
+   * does when it locks scrolling. */
+  scrollbar-gutter: stable;
 }
 
 body {
@@ -254,6 +259,21 @@ body {
   display: none;
 }
 
+/* The gear is a filled silhouette, so it opts out of the stroke styling the rest
+ * of the toolbar icons use. */
+.icon-btn svg.gear {
+  width: 19px;
+  height: 19px;
+  fill: currentColor;
+  stroke: none;
+}
+
+/* A modal dialog stops the page behind it from scrolling. On <html>, because that
+ * is the viewport scroller. */
+html.modal-open {
+  overflow: hidden;
+}
+
 /* ---------- buttons ---------- */
 
 .icon-btn {
@@ -300,16 +320,6 @@ body {
 
 .icon-btn:active {
   transform: translateY(0.5px);
-}
-
-.icon-btn.accent {
-  color: var(--accent);
-  border-color: color-mix(in srgb, var(--accent) 28%, transparent);
-  background: var(--accent-soft);
-}
-
-.icon-btn.accent:hover {
-  background: color-mix(in srgb, var(--accent) 18%, transparent);
 }
 
 .icon-btn.small {

@@ -211,7 +211,7 @@ Commands (webview → Rust):
 | `load_path(path)` | `Document` | Recent-files list, relative links. |
 | `reload` | `Document?` | `Ctrl+R` / `F5`. |
 | `filter_existing(paths)` | `Vec<String>` | Prunes recent entries whose file has been moved or deleted. |
-| `open_dialog` | `Document?` | `Ctrl+O`, toolbar button (blocking dialog on a worker thread). |
+| `open_dialog` | `Document?` | `Ctrl+O` (and drag & drop, which goes through the same path). |
 | `open_link(href)` | `LinkOutcome` | Link clicks: external → OS browser, sibling `.md` → open in place, missing → notice. |
 | `make_default` | `DefaultReport` | Registers MD Viewer as a `.md` handler, tells the shell, then shows the Windows picker. |
 | `default_status` | `DefaultStatus` | Whether MD Viewer currently owns `.md` — drives the empty-state line and button. |
