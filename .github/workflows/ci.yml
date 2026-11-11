@@ -41,6 +41,70 @@ jobs:
           if ($total -gt $totalBudget) { throw ("src/ is {0:N1} KB, over the {1:N0} KB budget" -f ($total / 1KB), ($totalBudget / 1KB)) }
           if ($js -gt $jsBudget)       { throw ("src/app.js is {0:N1} KB, over the {1:N0} KB budget" -f ($js / 1KB), ($jsBudget / 1KB)) }
 
+      # The front end has no test-runner dependency: preview/tests.html drives the
+      # real app.js inside an iframe of the harness, and a headless browser is asked
+      # for the settled DOM. Edge is the stock runner's browser; Chrome is the
+      # fallback because Edge is sometimes stale or absent on hosted images.
+      - name: Front-end tests
+        working-directory: .
+        shell: pwsh
+        run: |
+          $server = Start-Process -FilePath "node" -ArgumentList "scripts/dev-server.js", "8123" -PassThru -WindowStyle Hidden
+          try {
+            # The server binds 127.0.0.1 only, so do not use "localhost" here.
+            $base = "http://127.0.0.1:8123"
+            $ready = $false
+            foreach ($attempt in 1..40) {
+              try {
+                Invoke-WebRequest -Uri "$base/preview/tests.html" -UseBasicParsing -TimeoutSec 2 | Out-Null
+                $ready = $true
+                break
+              } catch { Start-Sleep -Milliseconds 250 }
+            }
+            if (-not $ready) { throw "the preview server never came up on $base" }
+
+            $candidates = @(
+              "$env:ProgramFiles(x86)\Microsoft\Edge\Application\msedge.exe",
+              "$env:ProgramFiles\Microsoft\Edge\Application\msedge.exe",
+              "$env:ProgramFiles\Google\Chrome\Application\chrome.exe",
+              "$env:LOCALAPPDATA\Google\Chrome\Application\chrome.exe"
+            )
+            $browser = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+            if (-not $browser) { throw "neither Edge nor Chrome is installed on the runner" }
+            "browser: $browser"
+
+            $dom = Join-Path $env:TEMP "mdviewer-tests-dom.html"
+            $errors = Join-Path $env:TEMP "mdviewer-tests-dom.err"
+            $profile = Join-Path $env:TEMP "mdviewer-test-profile"
+            $arguments = @(
+              "--headless=new", "--disable-gpu", "--no-first-run", "--no-default-browser-check",
+              "--disable-logging", "--log-level=3",
+              "--user-data-dir=`"$profile`"", "--virtual-time-budget=30000",
+              "--dump-dom", "$base/preview/tests.html"
+            )
+            # Chrome and Edge are GUI-subsystem binaries: without redirection their
+            # stdout goes nowhere, so --dump-dom writes to a file instead.
+            $process = Start-Process -FilePath $browser -ArgumentList $arguments `
+              -RedirectStandardOutput $dom -RedirectStandardError $errors -PassThru -NoNewWindow
+            if (-not $process.WaitForExit(180000)) {
+              $process.Kill()
+              throw "the headless browser did not exit within three minutes"
+            }
+
+            $page = Get-Content $dom -Raw -ErrorAction SilentlyContinue
+            if (-not $page) { throw "the browser produced no DOM (stderr: $errors)" }
+            $match = [regex]::Match($page, 'RESULT: (PASS|FAIL) (\d+)/(\d+)')
+            if (-not $match.Success) { throw "the test page never reported a result (DOM: $dom)" }
+            $match.Value
+            if ($page -notmatch 'data-result="pass"') {
+              [regex]::Matches($page, 'FAIL [^<\r\n]{0,120}') | ForEach-Object { "  " + $_.Value }
+              throw "front-end tests failed"
+            }
+          } finally {
+            Stop-Process -Id $server.Id -Force -ErrorAction SilentlyContinue
+            Remove-Item (Join-Path $env:TEMP "mdviewer-test-profile") -Recurse -Force -ErrorAction SilentlyContinue
+          }
+
       - name: Rust toolchain
         uses: dtolnay/rust-toolchain@stable
 

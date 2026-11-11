@@ -20,7 +20,8 @@ backend is one Rust file. Windows is the only exercised target.
 | Purpose | Command |
 | :-- | :-- |
 | Fast compile gate | `cargo check --manifest-path src-tauri/Cargo.toml` |
-| All tests | `cargo test --manifest-path src-tauri/Cargo.toml` (23 pass, 1 ignored) |
+| All tests | `cargo test --manifest-path src-tauri/Cargo.toml` (33 pass, 1 ignored) |
+| Front-end tests | `node scripts/dev-server.js` → <http://localhost:8123/preview/tests.html> (43 checks, `RESULT: PASS`) |
 | One test | `cargo test --manifest-path src-tauri/Cargo.toml open_command -- --nocapture` |
 | UI iteration | `node scripts/dev-server.js` → <http://localhost:8123/preview/harness.html> |
 | Desktop layout | <http://localhost:8123/preview/wide.html> (1280×900 iframe) |
@@ -33,11 +34,15 @@ backend is one Rust file. Windows is the only exercised target.
 - CI lives in `.github/workflows/ci.yml` (windows-latest: a **frontend size budget**
   — `src/` ≤ 108 KB, `app.js` ≤ 62 KB, raised from 80/46 KB when the 0.2.0 batch
   reached that ceiling, to 96/56 for tabs and the Phase 4 items, and to 108/62 for
-  the settings panel — then `cargo check --all-targets`, then
-  `cargo test`). There is still no lint/format/typecheck config — don't invent
-  `npm run lint`; `cargo check` + tests are the gate. The size budget is the guard
-  behind "three static files, no framework": if a change needs more room, raise it
-  in the same commit and say why.
+  the settings panel — then **the front-end tests** in a headless browser, then
+  `cargo check --all-targets`, then `cargo test`). The test step starts
+  `scripts/dev-server.js` itself, tries Edge then Chrome, dumps the settled DOM of
+  `/preview/tests.html`, and fails unless the page reports `data-result="pass"`;
+  browsers are GUI-subsystem binaries, so `--dump-dom` output has to be redirected
+  to a file rather than captured from the pipe. There is still no
+  lint/format/typecheck config — don't invent `npm run lint`; `cargo check` + both
+  test suites are the gate. The size budget is the guard behind "three static files,
+  no framework": if a change needs more room, raise it in the same commit and say why.
 - HTML/CSS/JS are embedded at compile time (`frontendDist: ../src`), so plain
   `cargo run` shows stale assets after frontend edits. Use the preview harness,
   or `npx tauri dev` (serves `src/` from disk) when the CLI is installed.
@@ -111,7 +116,8 @@ backend is one Rust file. Windows is the only exercised target.
 - CSP is `script-src 'self'` / `style-src 'self'`: no inline `<script>` (and
   `app.js` must stay in `<head>` so the theme is applied before first paint).
   The preview harness has **no CSP**, so verify CSP-sensitive changes in the real
-  app, not just the harness.
+  app, not just the harness — `preview/tests.html` inherits the same blind spot, so a
+  green suite does not clear an inline-style or inline-script question.
 - `windows = "0.62.2"` is pinned to the version `tauri-runtime-wry` uses so
   `WebviewWindow::hwnd()` (an `HWND`) can be passed to shell APIs. Bumping it
   alone will break the interop.

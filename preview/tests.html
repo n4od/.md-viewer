@@ -1,0 +1,221 @@
+<!doctype html>
+<!--
+  Front-end tests. Open it from the same dev server as the harness:
+
+    node scripts/dev-server.js
+    open http://localhost:8123/preview/tests.html
+
+  Every check drives the real app.js inside an iframe of preview/harness.html, so the
+  fixture, the fake Tauri bridge and the markup are reused rather than copied. The
+  page prints "RESULT: PASS n/n" or "RESULT: FAIL k/n" and sets data-result, which is
+  what CI looks for (see .github/workflows/ci.yml).
+
+  Ticks are microtasks on purpose: an occluded tab throttles timers and animation
+  frames, and the fake IPC resolves promises rather than posting messages.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>MD Viewer — front-end tests</title>
+<style>
+  body { font: 13px/1.5 ui-monospace, Consolas, monospace; margin: 24px; color: #20242a; }
+  h1 { font: 600 18px/1.2 Georgia, serif; }
+  #summary { font-weight: 700; }
+  #summary[data-result="pass"] { color: #0a5a50; }
+  #summary[data-result="fail"] { color: #b4432f; }
+  #log { white-space: pre-wrap; }
+  iframe { width: 1024px; height: 768px; border: 1px solid #ccc; margin-top: 16px; }
+</style>
+</head>
+<body>
+<h1>MD Viewer — front-end tests</h1>
+<p id="summary" data-result="running">running…</p>
+<pre id="log"></pre>
+<script>
+(async function () {
+  const log = document.getElementById("log");
+  const summary = document.getElementById("summary");
+  const results = [];
+
+  function record(name, ok, detail) {
+    results.push({ name, ok: !!ok });
+    log.textContent += (ok ? "ok   " : "FAIL ") + name + (ok || !detail ? "" : "  — " + detail) + "\n";
+  }
+  function is(name, actual, expected) {
+    record(name, JSON.stringify(actual) === JSON.stringify(expected), "got " + JSON.stringify(actual) + ", want " + JSON.stringify(expected));
+  }
+  function ok(name, value, detail) { record(name, !!value, detail); }
+
+  // Start from a clean slate. The suite shares localStorage with the harness, so a
+  // previous run would otherwise leave settings behind and the expectations would
+  // depend on the order things were last run in.
+  Object.keys(localStorage)
+    .filter(function (key) { return key.indexOf("mdviewer.") === 0; })
+    .forEach(function (key) { localStorage.removeItem(key); });
+
+  const frame = document.createElement("iframe");
+  frame.id = "fixture";
+  frame.title = "fixture";
+  frame.style.cssText = "width:1024px;height:768px;border:1px solid #ccc;margin-top:16px";
+  document.body.appendChild(frame);
+  const loaded = new Promise(function (resolve, reject) {
+    frame.addEventListener("load", resolve, { once: true });
+    setTimeout(function () { reject(new Error("fixture never loaded")); }, 15000);
+  });
+  frame.src = "harness.html";
+  await loaded;
+
+  const win = frame.contentWindow;
+  const doc = frame.contentDocument;
+  // A microtask turn, so the fake IPC's promises have settled.
+  const tick = async function () { await Promise.resolve(); await Promise.resolve(); };
+  const q = function (selector) { return doc.querySelector(selector); };
+  const qa = function (selector) { return Array.prototype.slice.call(doc.querySelectorAll(selector)); };
+  const emit = function (payload) {
+    win.__previewEmit("md://open", Object.assign({}, win.__previewPayload, payload));
+  };
+
+  // The startup document is asynchronous; let it land.
+  for (let i = 0; i < 400 && !q("#doc h1"); i++) await tick();
+
+  /* ---------- the rendered document ---------- */
+  ok("sample renders", q("#doc h1"), "no h1 in #doc");
+
+  const headings = qa("#doc h1,#doc h2,#doc h3,#doc h4,#doc h5,#doc h6");
+  const ids = headings.map(function (h) { return h.id; });
+  ok("every heading has an id", headings.length > 0 && ids.every(Boolean));
+  is("heading ids are unique", new Set(ids).size, ids.length);
+
+  const tocLinks = qa("#toc-list a");
+  is("outline lists every heading", tocLinks.length, headings.length);
+  ok("outline labels carry no anchor glyph", tocLinks.every(function (a) { return a.textContent.indexOf("#") === -1; }));
+
+  const tables = qa("#doc table");
+  const wraps = qa("#doc .table-scroll");
+  ok("tables are wrapped for sideways scroll", tables.length > 0 && wraps.length === tables.length);
+
+  is("code blocks get a toolbar", qa("#doc .code-block").length, qa("#doc pre").length);
+  is("each toolbar has a copy button", qa("#doc .copy-btn").length, qa("#doc .code-block").length);
+
+  const tokens = qa("#doc code [class^='tok-']");
+  ok("fenced code is highlighted", tokens.length > 0);
+  const kinds = new Set(tokens.map(function (s) { return s.className; }));
+  ["tok-c", "tok-s", "tok-n", "tok-k", "tok-t", "tok-a"].forEach(function (kind) {
+    ok("token class present: " + kind, kinds.has(kind));
+  });
+
+  const image = q("#doc img");
+  ok("local image rewritten to the asset URL", image && image.getAttribute("src").indexOf("src-tauri/icons/icon.png") !== -1, image ? image.getAttribute("src") : "no image");
+
+  /* ---------- pinned section title ---------- */
+  const bar = doc.getElementById("sticky-head");
+  ok("pinned title is visible with a document", bar && win.getComputedStyle(bar).display !== "none");
+  ok("pinned title has text", bar && bar.textContent.trim().length > 0);
+
+  /* ---------- image lightbox ---------- */
+  const box = doc.getElementById("lightbox");
+  image.click();
+  await tick();
+  ok("clicking an image opens the lightbox", !box.hidden && doc.getElementById("lightbox-img").getAttribute("src"));
+  box.click();
+  await tick();
+  ok("clicking the backdrop closes the lightbox", box.hidden);
+
+  /* ---------- tabs ---------- */
+  const strip = doc.getElementById("tabs");
+  ok("no tab strip for a single document", strip.hidden && strip.querySelectorAll(".tab").length === 0);
+
+  emit({ path: "C:/notes/second.md", name: "second.md", html: '<h1 id="s">Second</h1><p>one</p>' });
+  await tick();
+  is("a second document opens a tab", strip.querySelectorAll(".tab").length, 2);
+  is("--tabs-h rises for the strip", win.getComputedStyle(doc.body).getPropertyValue("--tabs-h").trim(), "34px");
+  is("the new tab is active", q(".tab.active .tab-open").textContent, "second.md");
+
+  strip.querySelectorAll(".tab-open")[0].click();
+  await tick(); await tick();
+  ok("switching tabs loads that document", doc.getElementById("doc-title").textContent.indexOf("sample") !== -1, doc.getElementById("doc-title").textContent);
+
+  strip.querySelector(".tab.active .tab-close").click();
+  await tick(); await tick();
+  ok("closing the active tab promotes its neighbour", strip.hidden || strip.querySelectorAll(".tab").length === 1);
+  ok("the neighbour is on screen", q("#doc h1"));
+
+  /* ---------- settings ---------- */
+  const panel = doc.getElementById("settings");
+  const gear = doc.getElementById("btn-settings");
+  gear.click();
+  await tick();
+  ok("the gear opens a modal settings dialog", panel.open && panel.matches(":modal"));
+  is("the page behind is locked", win.getComputedStyle(doc.documentElement).overflow, "hidden");
+
+  panel.querySelector('button[data-theme="light"]').click();
+  await tick();
+  is("theme applies from the panel", doc.documentElement.getAttribute("data-theme"), "light");
+  is("theme is remembered", win.localStorage.getItem("mdviewer.theme"), "light");
+
+  panel.querySelector('button[data-width="wide"]').click();
+  await tick();
+  is("reading width applies", doc.documentElement.getAttribute("data-width"), "wide");
+
+  const before = doc.getElementById("opt-scale-value").textContent;
+  doc.getElementById("opt-scale-up").click();
+  await tick();
+  ok("text size steps up", doc.getElementById("opt-scale-value").textContent !== before, before + " -> " + doc.getElementById("opt-scale-value").textContent);
+
+  const resumeBox = doc.getElementById("opt-position");
+  const wasResume = resumeBox.checked;
+  resumeBox.click();
+  await tick();
+  is("resume-position setting persists", win.localStorage.getItem("mdviewer.resume"), wasResume ? "off" : "on");
+  // Leave it enabled for the reading-position check below.
+  win.localStorage.setItem("mdviewer.resume", "on");
+
+  const caseBtn = doc.getElementById("opt-case");
+  const wasCase = caseBtn.getAttribute("aria-pressed") === "true";
+  caseBtn.click();
+  await tick();
+  is("find defaults move the find bar's own toggle", doc.getElementById("find-case").getAttribute("aria-pressed"), String(!wasCase));
+
+  const closed = new Promise(function (resolve) { panel.addEventListener("close", resolve, { once: true }); });
+  panel.click();
+  ok("a click outside closes the dialog", !panel.open);
+  // close() fires its event as a task, which is where the scroll lock is released.
+  await closed;
+  await tick();
+  is("the scroll lock is released", win.getComputedStyle(doc.documentElement).overflow, "visible");
+
+  /* ---------- per-document reading position ---------- */
+  let tall = "";
+  for (let i = 0; i < 200; i++) tall += '<h2 id="t' + i + '">Section ' + i + "</h2><p>Filler " + i + ".</p>";
+  win.localStorage.setItem("mdviewer.positions", JSON.stringify({ "C:/notes/tall.md": 400 }));
+  emit({ path: "C:/notes/tall.md", name: "tall.md", html: tall });
+  await tick(); await tick();
+  ok("a stored reading position is restored", Math.abs(win.scrollY - 400) <= 2, "scrollY " + win.scrollY);
+
+  /* ---------- progressive rendering ---------- */
+  let big = "";
+  let sections = 0;
+  while (big.length <= 1048576) {
+    big += '<h2 id="b' + sections + '">Big ' + sections + "</h2><p>Paragraph " + sections + " with enough words to make the document large.</p>";
+    sections++;
+  }
+  emit({ path: "C:/notes/big.md", name: "big.md", html: big });
+  for (let i = 0; i < 400 && qa("#doc h2").length < sections; i++) await tick();
+  ok("the big document crosses the progressive threshold", big.length > 1048576, big.length + " bytes");
+  is("progressive rendering completes every chunk", qa("#doc h2").length, sections);
+  is("its outline is complete too", qa("#toc-list a").length, sections);
+  ok("its first heading kept its id", !!doc.getElementById("b0"));
+  ok("its last heading kept its id", !!doc.getElementById("b" + (sections - 1)));
+
+  /* ---------- report ---------- */
+  const failed = results.filter(function (r) { return !r.ok; }).length;
+  summary.dataset.result = failed ? "fail" : "pass";
+  summary.textContent = "RESULT: " + (failed ? "FAIL" : "PASS") + " " + (results.length - failed) + "/" + results.length;
+})().catch(function (error) {
+  const summary = document.getElementById("summary");
+  summary.dataset.result = "fail";
+  summary.textContent = "RESULT: FAIL harness error: " + ((error && error.message) || error);
+});
+</script>
+</body>
+</html>

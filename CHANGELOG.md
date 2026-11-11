@@ -7,6 +7,21 @@ the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **A front-end test suite, and CI runs it.** `preview/tests.html` loads the preview
+  harness in an iframe and drives the real `app.js` inside it: 43 checks over the
+  render path (heading ids, outline parity, table wrappers, copy buttons, every token
+  class, rewritten image sources), the pinned title, the image lightbox, tabs and the
+  `--tabs-h` layout variable, the settings dialog and its scroll lock, per-document
+  reading position, and progressive rendering across the 1 MiB threshold. It is a page
+  rather than a package — nothing to install, no bundler, nothing added to the size
+  budget.
+- CI asks a headless browser for the settled DOM and fails unless the page reports
+  `data-result="pass"`, so a front-end regression now breaks the build instead of
+  waiting for someone to open the harness. Edge is tried first, then Chrome, and the
+  browser is given a three-minute ceiling so a hang cannot stall the job.
+
 ## [0.3.4] - 2026-11-11
 
 ### Added
