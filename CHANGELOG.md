@@ -36,6 +36,11 @@ the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `C:\notes\a.md#setup`. The glyph is a CSS pseudo-element, so it never leaks into
   the heading's text (which the ids, the outline labels and find all read), and each
   heading keeps a clean accessible name rather than announcing the copy link.
+- **Image placeholders.** A local image now carries its real pixel dimensions,
+  read from the file header (PNG, JPEG, GIF, WebP — no decoding, no new
+  dependency), so the page reserves the correct box before the file loads and the
+  text no longer jumps when it appears. Author-supplied `width`/`height` still win,
+  and remote or `data:` images are left alone.
 
 ### Changed
 

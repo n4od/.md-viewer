@@ -360,11 +360,312 @@ fn sanitize(dirty: &str) -> String {
     builder.clean(dirty).to_string()
 }
 
-fn render_markdown(source: &str) -> String {
+/// Render, then give each local image its real pixel dimensions so the browser
+/// reserves the right box before the file loads (no layout shift). `dir` is the
+/// document's folder, used to resolve relative image paths.
+fn render_markdown_in(source: &str, dir: Option<&Path>) -> String {
     let parser = Parser::new_ext(source, markdown_options());
     let mut rendered = String::with_capacity(source.len() + source.len() / 2 + 64);
     html::push_html(&mut rendered, parser);
-    sanitize(&alignment_to_classes(rendered))
+    let sized = add_image_dimensions(rendered, dir);
+    sanitize(&alignment_to_classes(sized))
+}
+
+/// Add `width`/`height` to local `<img>` tags that carry neither, so the browser
+/// can reserve the box from the intrinsic aspect ratio (the stylesheet pairs
+/// `max-width: 100%` with `height: auto`, so this never distorts an image).
+/// Author-supplied dimensions win, and anything that is not a plain local path
+/// (http:, data:, root-absolute) is left untouched.
+fn add_image_dimensions(html: String, dir: Option<&Path>) -> String {
+    let dir = match dir {
+        Some(dir) => dir,
+        None => return html,
+    };
+
+    let mut out: Option<String> = None;
+    let mut copied = 0usize;   // start of the region not yet copied to `out`
+    let mut search = 0usize;
+    // A repeated image (an icon used a hundred times) should be read once.
+    let mut sizes: std::collections::HashMap<PathBuf, Option<(u32, u32)>> =
+        std::collections::HashMap::new();
+
+    while let Some(offset) = html[search..].find("<img") {
+        let start = search + offset;
+        let end = match tag_end(&html, start) {
+            Some(end) => end,
+            None => break,
+        };
+        search = end + 1;
+        let tag = &html[start..=end];
+
+        if attribute_value(tag, "width").is_some() || attribute_value(tag, "height").is_some() {
+            continue;
+        }
+        let src = match attribute_value(tag, "src") {
+            Some(src) => src,
+            None => continue,
+        };
+        let size = local_image_path(&src, dir)
+            .map(|path| *sizes.entry(path).or_insert_with_key(|path| image_dimensions(path)))
+            .unwrap_or(None);
+        let (width, height) = match size {
+            Some(size) => size,
+            None => continue,
+        };
+
+        // Insert before the tag's closing ">", stepping back over a self-closing
+        // "/" so the attributes land before it, not after.
+        let mut insert = end;
+        while insert > start && matches!(html.as_bytes()[insert - 1], b' ' | b'/') {
+            insert -= 1;
+        }
+        let buffer = out.get_or_insert_with(|| String::with_capacity(html.len() + 64));
+        buffer.push_str(&html[copied..insert]);
+        buffer.push_str(&format!(" width=\"{width}\" height=\"{height}\""));
+        copied = insert;
+    }
+
+    match out {
+        Some(mut buffer) => {
+            buffer.push_str(&html[copied..]);
+            buffer
+        }
+        None => html,
+    }
+}
+
+/// Index of the `>` closing the tag opened at `start`, skipping any `>` that sits
+/// inside a quoted attribute value.
+fn tag_end(html: &str, start: usize) -> Option<usize> {
+    let bytes = html.as_bytes();
+    let mut quote = 0u8;
+    let mut i = start;
+    while i < bytes.len() {
+        let byte = bytes[i];
+        if quote != 0 {
+            if byte == quote {
+                quote = 0;
+            }
+        } else if byte == b'"' || byte == b'\'' {
+            quote = byte;
+        } else if byte == b'>' {
+            return Some(i);
+        }
+        i += 1;
+    }
+    None
+}
+
+/// Value of `name` in a single tag, with HTML entities decoded. The renderer
+/// escapes `&` and `"`; values may be single-quoted, double-quoted or bare.
+fn attribute_value(tag: &str, name: &str) -> Option<String> {
+    let bytes = tag.as_bytes();
+    let mut i = 1;   // past '<'
+    while i < bytes.len() && !bytes[i].is_ascii_whitespace() && bytes[i] != b'>' && bytes[i] != b'/' {
+        i += 1;      // tag name
+    }
+    while i < bytes.len() {
+        while i < bytes.len() && (bytes[i].is_ascii_whitespace() || bytes[i] == b'/') {
+            i += 1;
+        }
+        if i >= bytes.len() || bytes[i] == b'>' {
+            break;
+        }
+        let name_start = i;
+        while i < bytes.len()
+            && !bytes[i].is_ascii_whitespace()
+            && bytes[i] != b'='
+            && bytes[i] != b'>'
+            && bytes[i] != b'/'
+        {
+            i += 1;
+        }
+        let found = &tag[name_start..i];
+        while i < bytes.len() && bytes[i].is_ascii_whitespace() {
+            i += 1;
+        }
+        if i >= bytes.len() || bytes[i] != b'=' {
+            continue;   // boolean attribute
+        }
+        i += 1;
+        while i < bytes.len() && bytes[i].is_ascii_whitespace() {
+            i += 1;
+        }
+        let value = if i < bytes.len() && (bytes[i] == b'"' || bytes[i] == b'\'') {
+            let quote = bytes[i];
+            i += 1;
+            let value_start = i;
+            while i < bytes.len() && bytes[i] != quote {
+                i += 1;
+            }
+            let value = &tag[value_start..i];
+            if i < bytes.len() {
+                i += 1;
+            }
+            value
+        } else {
+            let value_start = i;
+            while i < bytes.len() && !bytes[i].is_ascii_whitespace() && bytes[i] != b'>' {
+                i += 1;
+            }
+            &tag[value_start..i]
+        };
+        if found.eq_ignore_ascii_case(name) {
+            return Some(unescape_entities(value));
+        }
+    }
+    None
+}
+
+fn unescape_entities(raw: &str) -> String {
+    if !raw.contains('&') {
+        return raw.to_string();
+    }
+    let mut out = String::with_capacity(raw.len());
+    let mut rest = raw;
+    while let Some(index) = rest.find('&') {
+        out.push_str(&rest[..index]);
+        rest = &rest[index..];
+        // One pass, so "&amp;quot;" stays the literal text it is.
+        let (decoded, consumed) = if rest.starts_with("&amp;") {
+            ("&", 5)
+        } else if rest.starts_with("&quot;") {
+            ("\"", 6)
+        } else if rest.starts_with("&#39;") || rest.starts_with("&apos;") {
+            ("'", if rest.starts_with("&#39;") { 5 } else { 6 })
+        } else if rest.starts_with("&lt;") {
+            ("<", 4)
+        } else if rest.starts_with("&gt;") {
+            (">", 4)
+        } else {
+            out.push('&');
+            rest = &rest[1..];
+            continue;
+        };
+        out.push_str(decoded);
+        rest = &rest[consumed..];
+    }
+    out.push_str(rest);
+    out
+}
+
+/// A relative image src resolved against the document folder, or None when the
+/// file is not there or the src is not a local path at all.
+fn local_image_path(src: &str, dir: &Path) -> Option<PathBuf> {
+    let src = src.split(['?', '#']).next().unwrap_or(src);
+    if src.is_empty() || src.starts_with("//") || src.starts_with('/') || src.starts_with('\\') {
+        return None;
+    }
+    if looks_like_scheme(src) {
+        return None;
+    }
+    let decoded = percent_decode(src);
+    let resolved = dir.join(Path::new(&decoded));
+    if resolved.is_file() {
+        Some(resolved)
+    } else {
+        None
+    }
+}
+
+/// `http:`, `data:` and friends. A Windows path like `C:\notes\x.png` reads like
+/// a scheme too, which matches how the frontend already treats it, so it is left
+/// alone rather than guessed at.
+fn looks_like_scheme(src: &str) -> bool {
+    match src.as_bytes().first() {
+        Some(byte) if byte.is_ascii_alphabetic() => {}
+        _ => return false,
+    }
+    match src.find(':') {
+        Some(colon) => {
+            colon > 0
+                && src[..colon]
+                    .bytes()
+                    .all(|b| b.is_ascii_alphanumeric() || b == b'+' || b == b'-' || b == b'.')
+        }
+        None => false,
+    }
+}
+
+/// Pixel dimensions straight from the file header: no decoding, no dependency.
+/// PNG, JPEG, GIF and WebP are covered; anything else returns None, which just
+/// leaves that image without reserved space. Only the first 64 KiB are read.
+fn image_dimensions(path: &Path) -> Option<(u32, u32)> {
+    use std::io::Read;
+
+    let mut head = Vec::new();
+    std::fs::File::open(path)
+        .ok()?
+        .take(64 * 1024)
+        .read_to_end(&mut head)
+        .ok()?;
+
+    if head.len() >= 24 && head.starts_with(b"\x89PNG\r\n\x1a\n") && &head[12..16] == b"IHDR" {
+        return Some((
+            u32::from_be_bytes([head[16], head[17], head[18], head[19]]),
+            u32::from_be_bytes([head[20], head[21], head[22], head[23]]),
+        ));
+    }
+    if head.len() >= 10 && (head.starts_with(b"GIF87a") || head.starts_with(b"GIF89a")) {
+        return Some((
+            u16::from_le_bytes([head[6], head[7]]) as u32,
+            u16::from_le_bytes([head[8], head[9]]) as u32,
+        ));
+    }
+    if head.len() >= 4 && head[0] == 0xff && head[1] == 0xd8 {
+        return jpeg_dimensions(&head);
+    }
+    if head.len() >= 30 && head.starts_with(b"RIFF") && &head[8..12] == b"WEBP" {
+        return webp_dimensions(&head);
+    }
+    None
+}
+
+fn jpeg_dimensions(head: &[u8]) -> Option<(u32, u32)> {
+    let mut i = 2;   // past the Start-Of-Image marker
+    while i + 9 <= head.len() {
+        if head[i] != 0xff {
+            i += 1;
+            continue;
+        }
+        let marker = head[i + 1];
+        // Markers with no length field.
+        if marker == 0xff || marker == 0x01 || (0xd0..=0xd9).contains(&marker) {
+            i += 2;
+            continue;
+        }
+        let length = u16::from_be_bytes([head[i + 2], head[i + 3]]) as usize;
+        if length < 2 {
+            return None;
+        }
+        // Start Of Frame (any variant except DHT/JPG/DAC).
+        if (0xc0..=0xcf).contains(&marker) && marker != 0xc4 && marker != 0xc8 && marker != 0xcc {
+            return Some((
+                u16::from_be_bytes([head[i + 7], head[i + 8]]) as u32,
+                u16::from_be_bytes([head[i + 5], head[i + 6]]) as u32,
+            ));
+        }
+        i += 2 + length;
+    }
+    None
+}
+
+fn webp_dimensions(head: &[u8]) -> Option<(u32, u32)> {
+    match &head[12..16] {
+        b"VP8X" => Some((
+            1 + u32::from_le_bytes([head[24], head[25], head[26], 0]),
+            1 + u32::from_le_bytes([head[27], head[28], head[29], 0]),
+        )),
+        b"VP8L" => {
+            let bits = u32::from_le_bytes([head[21], head[22], head[23], head[24]]);
+            Some(((bits & 0x3fff) + 1, ((bits >> 14) & 0x3fff) + 1))
+        }
+        b"VP8 " => Some((
+            (u16::from_le_bytes([head[26], head[27]]) & 0x3fff) as u32,
+            (u16::from_le_bytes([head[28], head[29]]) & 0x3fff) as u32,
+        )),
+        _ => None,
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -375,11 +676,13 @@ fn load_document(path: &Path) -> Document {
     match read_source(path) {
         Ok((source, truncated)) => {
             let metadata = std::fs::metadata(path).ok();
+            let dir = parent_dir(path);
+            let html = render_markdown_in(&source, Some(Path::new(&dir)));
             Document {
                 path: path.display().to_string(),
                 name: file_name(path),
-                dir: parent_dir(path),
-                html: render_markdown(&source),
+                dir,
+                html,
                 size: metadata.as_ref().map(|meta| meta.len()).unwrap_or(source.len() as u64),
                 modified: metadata
                     .as_ref()
@@ -1365,7 +1668,7 @@ footnote[^1]
 
 [^1]: the note
 ";
-        let html = render_markdown(source);
+        let html = render_markdown_in(source, None);
 
         // Heading ids are added in the webview (slugified) so the outline can
         // link to them; the renderer itself emits a plain <h1>.
@@ -1381,8 +1684,9 @@ footnote[^1]
 
     #[test]
     fn sanitising_removes_active_content() {
-        let html = render_markdown(
+        let html = render_markdown_in(
             "<script>steal()</script>\n\n<img src=x onerror=\"steal()\">\n\n[click](javascript:steal())\n\n<div style=\"position:fixed\" onclick=\"steal()\">x</div>",
+            None,
         );
 
         assert!(!html.contains("<script"), "script tag: {html}");
@@ -1392,9 +1696,90 @@ footnote[^1]
         assert!(!html.contains("position:fixed"), "unsafe style: {html}");
     }
 
+    /// The webview needs width/height to reserve an image's box before it loads.
+    /// Values come from the file header (no decoding, no dependency), the author's
+    /// own attributes win, and non-local sources are left alone.
+    #[test]
+    fn local_image_dimensions_come_from_the_file_header() {
+        let dir = std::env::temp_dir().join("mdviewer-image-dimensions-test");
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+
+        // 640x480 PNG
+        let mut png = b"\x89PNG\r\n\x1a\n".to_vec();
+        png.extend_from_slice(&13u32.to_be_bytes());
+        png.extend_from_slice(b"IHDR");
+        png.extend_from_slice(&640u32.to_be_bytes());
+        png.extend_from_slice(&480u32.to_be_bytes());
+        std::fs::write(dir.join("shot.png"), &png).unwrap();
+
+        // 320x200 JPEG (SOI, then a SOF0 frame header)
+        let mut jpeg = vec![0xff, 0xd8, 0xff, 0xc0, 0x00, 0x11, 0x08];
+        jpeg.extend_from_slice(&200u16.to_be_bytes());
+        jpeg.extend_from_slice(&320u16.to_be_bytes());
+        jpeg.extend_from_slice(&[0x03, 0x01, 0x11, 0x00, 0x02, 0x11, 0x00, 0x03, 0x11, 0x00]);
+        std::fs::write(dir.join("photo.jpg"), &jpeg).unwrap();
+
+        // 64x32 GIF
+        let mut gif = b"GIF89a".to_vec();
+        gif.extend_from_slice(&64u16.to_le_bytes());
+        gif.extend_from_slice(&32u16.to_le_bytes());
+        std::fs::write(dir.join("anim.gif"), &gif).unwrap();
+
+        // 100x50 WebP (VP8X)
+        let mut webp = b"RIFF".to_vec();
+        webp.extend_from_slice(&0u32.to_le_bytes());
+        webp.extend_from_slice(b"WEBP");
+        webp.extend_from_slice(b"VP8X");
+        webp.extend_from_slice(&10u32.to_le_bytes());
+        webp.push(0);
+        webp.extend_from_slice(&[0, 0, 0]);
+        webp.extend_from_slice(&[99, 0, 0]);
+        webp.extend_from_slice(&[49, 0, 0]);
+        std::fs::write(dir.join("pic.webp"), &webp).unwrap();
+
+        // A file whose name needs unescaping in the src.
+        std::fs::write(dir.join("my shot & more.png"), &png).unwrap();
+
+        let source = concat!(
+            "![shot](shot.png)\n\n",
+            "![photo](photo.jpg)\n\n",
+            "![anim](anim.gif)\n\n",
+            "![pic](pic.webp)\n\n",
+            "![spaced](my%20shot%20&amp;%20more.png)\n\n",
+            "![remote](https://example.com/x.png)\n\n",
+            "![missing](nope.png)\n\n",
+            "<img src=\"shot.png\" width=\"10\" height=\"10\">\n"
+        );
+        let html = render_markdown_in(source, Some(&dir));
+
+        assert!(html.contains("alt=\"shot\" width=\"640\" height=\"480\""), "png: {html}");
+        assert!(html.contains("alt=\"photo\" width=\"320\" height=\"200\""), "jpeg: {html}");
+        assert!(html.contains("alt=\"anim\" width=\"64\" height=\"32\""), "gif: {html}");
+        assert!(html.contains("alt=\"pic\" width=\"100\" height=\"50\""), "webp: {html}");
+        assert!(
+            html.contains("alt=\"spaced\" width=\"640\" height=\"480\""),
+            "escaped path: {html}"
+        );
+        // Five decodable local images, plus the author's own width/height pair.
+        assert_eq!(html.matches("width=\"").count(), 6, "width attrs in:\n{html}");
+        assert_eq!(html.matches("height=\"").count(), 6, "height attrs in:\n{html}");
+        assert!(html.contains("width=\"10\" height=\"10\""), "author values kept: {html}");
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// A render without a document folder (used by most tests and by any caller
+    /// with no path) must not try to touch the filesystem.
+    #[test]
+    fn image_dimensions_are_skipped_without_a_folder() {
+        let html = render_markdown_in("![a](shot.png)\n", None);
+        assert_eq!(html.matches("width=\"").count(), 0, "{html}");
+    }
+
     #[test]
     fn table_alignment_is_emitted_as_classes() {
-        let html = render_markdown("| a | b |\n| :- | -: |\n| 1 | 2 |\n");
+        let html = render_markdown_in("| a | b |\n| :- | -: |\n| 1 | 2 |\n", None);
         // Inline styles are blocked by the app's CSP, so alignment is a class.
         assert!(html.contains("class=\"align-left\""), "left alignment: {html}");
         assert!(html.contains("class=\"align-right\""), "right alignment: {html}");
@@ -1403,7 +1788,7 @@ footnote[^1]
 
     #[test]
     fn inline_styles_from_raw_html_are_dropped() {
-        let html = render_markdown("<div style=\"color:red;text-align:center\">x</div>");
+        let html = render_markdown_in("<div style=\"color:red;text-align:center\">x</div>", None);
         assert!(!html.contains("style="), "style attribute leaked: {html}");
         assert!(!html.contains("color:red"), "style value leaked: {html}");
     }
@@ -1507,7 +1892,7 @@ footnote[^1]
         }
 
         let started = std::time::Instant::now();
-        let html = render_markdown(&source);
+        let html = render_markdown_in(&source, None);
         let elapsed = started.elapsed();
         println!(
             "rendered {} KiB of markdown into {} KiB of html in {:?}",

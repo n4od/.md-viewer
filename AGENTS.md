@@ -55,6 +55,13 @@ backend is one Rust file. Windows is the only exercised target.
   heading a screen reader announces. The anchor's offset is `rem`, not `em` — an
   `em` offset scales with the heading and pushes an `h1`'s glyph past the article's
   padding.
+- Local images get `width`/`height` from their file header (`image_dimensions`:
+  PNG/JPEG/GIF/WebP, no decoding, first 64 KiB only, cached per render) so the
+  browser reserves the box before the file loads. Author-supplied dimensions win
+  and non-local `src`s are skipped. `.markdown img` pairs `max-width: 100%` with
+  `height: auto`, which is what lets the attributes reserve space without
+  distorting. Only `render_markdown_in` with a document folder does this; passing
+  `None` (most unit tests) does no filesystem I/O.
 - Documents above 1 MiB of HTML are attached in 128 KiB chunks by
   `renderProgressive()`; `render()` (the small path) and it share `finishRender()`
   for everything that needs the whole document in the DOM. `enhance(root, state)`

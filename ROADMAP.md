@@ -84,8 +84,12 @@ Small, verifiable, and mostly finishing what 0.1.0 started.
       boundaries and attached 128 KiB at a time, yielding to the browser between
       chunks: the first chunk paints in ~70 ms instead of after ~2.4 s, at the cost
       of ~25% more total time from the extra layout passes.
-- [ ] **Image placeholders**: reserve space from image dimensions where available
-      to avoid layout shift while local images load.
+- [x] **Image placeholders**: local images gain their real `width`/`height` from
+      the file header (PNG/JPEG/GIF/WebP, header only — never decoded; cached per
+      render), so the browser reserves the correct box before the file loads and
+      the text below no longer shifts. Author values win, remote/`data:` images are
+      skipped, and a render with no document folder does no I/O. Rust-side, so it
+      costs nothing in the frontend size budget.
 
 ## Later — exploring
 
