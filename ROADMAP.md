@@ -112,8 +112,8 @@ sat under *Not planned* until now — and the multiple-window half stays decline
 
 ## Phase 4 — exploring
 
-Nothing open right now. Anything new starts here as an idea that wants a decision
-before it is built; the item below is the one that has been through that.
+Ideas, not commitments: each one wants a decision before it is built. The item
+marked done is the one that has been through that.
 
 - [x] **Syntax highlighting** for fenced code, done in Rust on the render path: a
       small tokeniser for the languages a note is likely to use (Rust, JS/TS,
@@ -122,6 +122,15 @@ before it is built; the item below is the one that has been through that.
       work; unknown languages are left untouched. Measured cost on a code-heavy
       document: ~26% more render time and ~15% more payload. Every token colour
       measures at least 4.5:1 against the code background in both themes.
+- [ ] **Sticky current heading**: keep the section you are reading in view under the
+      topbar, so a long document keeps its place instead of losing it on every
+      scroll. Needs no new state — the scroll-spy already knows the active heading.
+- [ ] **Image lightbox**: click an image to see it full size instead of at the
+      article's width, and close it with Esc or a click. Matters for screenshots in
+      notes, which are usually downscaled to fit.
+- [ ] **Remember window size and position**: reopen at the size and place you last
+      left the window rather than at the configured default. Rust-side, stored
+      alongside the reading positions.
 
 ## Not planned
 
