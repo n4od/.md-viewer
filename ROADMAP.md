@@ -88,7 +88,7 @@ The things you reach for while reading, and the render path underneath them.
       document is simply the top of the recent list, which avoids a switch that
       could leave the welcome screen — the only place to turn it off — unreachable.
 
-## Phase 3 — multiple documents
+## Phase 3 — multiple documents (done)
 
 Several documents open in the one window, as tabs.
 
