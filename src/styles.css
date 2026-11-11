@@ -33,6 +33,12 @@
   --danger: #b4432f;
   --danger-soft: rgba(180, 67, 47, 0.08);
   --mark: #ffe9a3;
+  --tok-c: #5e6b75;
+  --tok-s: #0a5a50;
+  --tok-n: #8a4a12;
+  --tok-k: #a3341f;
+  --tok-t: #a3341f;
+  --tok-a: #7a4a00;
 }
 
 :root[data-theme="dark"] {
@@ -53,6 +59,12 @@
   --danger: #e58a77;
   --danger-soft: rgba(229, 138, 119, 0.1);
   --mark: #6b5a1c;
+  --tok-c: #7f8b99;
+  --tok-s: #8ed0a8;
+  --tok-n: #e0a86b;
+  --tok-k: #e08b7a;
+  --tok-t: #e08b7a;
+  --tok-a: #d9c07a;
 }
 
 *,
@@ -885,6 +897,28 @@ kbd {
   padding: 0;
   font-size: inherit;
   white-space: pre;
+}
+
+/* Token colours for highlighted fenced code (see the highlighter in main.rs).
+ * Only the interesting tokens get a span, so most code keeps the base colour. */
+.markdown code .tok-c {
+  color: var(--tok-c);
+  font-style: italic;
+}
+.markdown code .tok-s {
+  color: var(--tok-s);
+}
+.markdown code .tok-n {
+  color: var(--tok-n);
+}
+.markdown code .tok-k {
+  color: var(--tok-k);
+}
+.markdown code .tok-t {
+  color: var(--tok-t);
+}
+.markdown code .tok-a {
+  color: var(--tok-a);
 }
 
 /* ---------- tables ---------- */

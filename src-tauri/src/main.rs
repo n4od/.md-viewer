@@ -368,7 +368,7 @@ fn render_markdown_in(source: &str, dir: Option<&Path>) -> String {
     let mut rendered = String::with_capacity(source.len() + source.len() / 2 + 64);
     html::push_html(&mut rendered, parser);
     let sized = add_image_dimensions(rendered, dir);
-    sanitize(&alignment_to_classes(sized))
+    sanitize(&alignment_to_classes(highlight_code_blocks(sized)))
 }
 
 /// Add `width`/`height` to local `<img>` tags that carry neither, so the browser
@@ -665,6 +665,472 @@ fn webp_dimensions(head: &[u8]) -> Option<(u32, u32)> {
             (u16::from_le_bytes([head[28], head[29]]) & 0x3fff) as u32,
         )),
         _ => None,
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Fenced-code highlighting
+// ---------------------------------------------------------------------------
+
+/// A token class the stylesheet colours. Anything that is none of these is
+/// emitted unwrapped, which keeps the payload small: most of a code block is
+/// identifiers and punctuation, not tokens.
+#[derive(Clone, Copy)]
+enum Class {
+    Comment,
+    Str,
+    Number,
+    Keyword,
+    Tag,
+    Attr,
+}
+
+impl Class {
+    /// Short names on purpose: one span is emitted per token, so a document full
+    /// of code repeats the class name hundreds of times.
+    fn name(self) -> &'static str {
+        match self {
+            Class::Comment => "tok-c",
+            Class::Str => "tok-s",
+            Class::Number => "tok-n",
+            Class::Keyword => "tok-k",
+            Class::Tag => "tok-t",
+            Class::Attr => "tok-a",
+        }
+    }
+}
+
+/// Everything the scanner needs to know about one language, so adding a language
+/// is a table entry rather than new code.
+struct Language {
+    line_comments: &'static [&'static str],
+    block_comment: Option<(&'static str, &'static str)>,
+    /// Longest first, so `"""` is matched before `"`.
+    quotes: &'static [&'static str],
+    keywords: &'static [&'static str],
+    /// SQL-style: keywords match whatever their case.
+    fold_case: bool,
+    /// Markup (HTML/XML) is scanned by its own state machine.
+    markup: bool,
+}
+
+const BLOCK_C: Option<(&str, &str)> = Some(("/*", "*/"));
+
+/// Shared by the C family and the languages whose keywords mostly overlap it
+/// (Rust, TypeScript, Go, Java). A word that is a keyword in a sibling language
+/// can be coloured here; one table per language would be far more code than the
+/// difference is worth.
+const KW_C: &[&str] = &[
+    "abstract", "and", "as", "async", "auto", "await", "bool", "break", "byte", "case",
+    "catch", "chan", "char", "class", "const", "continue", "crate", "defer", "def",
+    "default", "delegate", "delete", "do", "double", "dyn", "elif", "else", "enum",
+    "except", "export", "extends", "extern", "false", "final", "finally", "float", "fn",
+    "for", "foreach", "from", "func", "function", "go", "goto", "if", "impl",
+    "implements", "import", "in", "inline", "instanceof", "int", "interface", "internal",
+    "is", "let", "long", "loop", "match", "mod", "module", "move", "mut", "namespace",
+    "new", "nil", "null", "nullptr", "of", "operator", "or", "override", "package",
+    "private", "protected", "protocol", "pub", "public", "range", "ref", "register",
+    "return", "select", "self", "short", "signed", "sizeof", "static", "string",
+    "struct", "super", "switch", "this", "throw", "throws", "trait", "true", "try",
+    "type", "typedef", "typeof", "uint", "ulong", "union", "unsigned", "unsafe",
+    "ushort", "use", "using", "var", "virtual", "void", "volatile", "where", "while",
+    "with", "yield",
+];
+
+const KW_PY: &[&str] = &[
+    "and", "as", "assert", "async", "await", "break", "class", "continue", "def", "del",
+    "elif", "else", "except", "False", "finally", "for", "from", "global", "if", "import",
+    "in", "is", "lambda", "None", "nonlocal", "not", "or", "pass", "raise", "return",
+    "True", "try", "while", "with", "yield",
+];
+
+/// Shell keywords plus the commands that show up in almost every snippet. A
+/// command list is a heuristic, but colouring the verb is most of what makes a
+/// shell block scannable.
+const KW_SHELL: &[&str] = &[
+    "case", "do", "done", "elif", "else", "esac", "fi", "for", "function", "if", "in",
+    "local", "return", "select", "then", "until", "while", "export", "source", "set",
+    "unset", "read", "exit", "echo", "cd", "ls", "mkdir", "rm", "cp", "mv", "cat",
+    "grep", "sed", "awk", "curl", "git", "npm", "npx", "node", "cargo", "make", "sudo",
+    "apt", "brew", "python", "pip", "docker", "ssh", "tar", "chmod", "kill", "find",
+    "sort", "uniq", "head", "tail", "wc", "tee", "which", "env", "date", "printf",
+];
+
+const KW_SQL: &[&str] = &[
+    "add", "all", "alter", "and", "as", "asc", "begin", "between", "by", "case", "column",
+    "commit", "constraint", "create", "default", "delete", "desc", "distinct", "drop",
+    "else", "end", "exists", "foreign", "from", "full", "group", "having", "if", "in",
+    "index", "inner", "insert", "into", "is", "join", "key", "left", "like", "limit",
+    "not", "null", "on", "or", "order", "outer", "primary", "references", "right",
+    "rollback", "select", "set", "table", "then", "union", "unique", "update", "values",
+    "when", "where",
+];
+
+/// PowerShell, which a Windows-first project's docs reach for often. Backtick is
+/// an escape character there rather than a quote, so it is not a delimiter here.
+const KW_PS: &[&str] = &[
+    "begin", "break", "catch", "class", "continue", "data", "do", "dynamicparam", "else",
+    "elseif", "end", "enum", "exit", "filter", "finally", "for", "foreach", "from",
+    "function", "hidden", "if", "in", "param", "process", "return", "static", "switch",
+    "throw", "trap", "try", "until", "using", "while", "workflow", "true", "false", "null",
+];
+
+/// JSON, YAML, TOML and friends: no keywords to speak of, just their literals.
+const KW_DATA: &[&str] = &["true", "false", "null", "yes", "no", "on", "off", "none"];
+
+const KW_CSS: &[&str] = &["and", "important", "from", "to", "media", "supports", "keyframes", "not", "only"];
+
+/// The profile for a fence's language tag, or None for a language we do not
+/// know — those blocks are left exactly as the renderer emitted them.
+fn language_for(info: &str) -> Option<Language> {
+    let name = info.trim().to_ascii_lowercase();
+    let language = match name.as_str() {
+        "rust" | "rs" => Language {
+            line_comments: &["//"],
+            block_comment: BLOCK_C,
+            quotes: &["\""],
+            keywords: KW_C,
+            fold_case: false,
+            markup: false,
+        },
+        "js" | "javascript" | "jsx" | "mjs" | "cjs" | "ts" | "typescript" | "tsx" | "node" => {
+            Language {
+                line_comments: &["//"],
+                block_comment: BLOCK_C,
+                quotes: &["\"", "'", "`"],
+                keywords: KW_C,
+                fold_case: false,
+                markup: false,
+            }
+        }
+        "json" | "json5" | "jsonc" => Language {
+            line_comments: &["//"],
+            block_comment: BLOCK_C,
+            quotes: &["\""],
+            keywords: KW_DATA,
+            fold_case: false,
+            markup: false,
+        },
+        "py" | "python" | "python3" => Language {
+            line_comments: &["#"],
+            block_comment: None,
+            quotes: &["\"\"\"", "'''", "\"", "'"],
+            keywords: KW_PY,
+            fold_case: false,
+            markup: false,
+        },
+        "sh" | "shell" | "bash" | "zsh" | "console" => Language {
+            line_comments: &["#"],
+            block_comment: None,
+            quotes: &["\"", "'", "`"],
+            keywords: KW_SHELL,
+            fold_case: false,
+            markup: false,
+        },
+        "powershell" | "ps1" | "pwsh" => Language {
+            line_comments: &["#"],
+            block_comment: Some(("<#", "#>")),
+            quotes: &["\"", "'"],
+            keywords: KW_PS,
+            fold_case: false,
+            markup: false,
+        },
+        "sql" => Language {
+            line_comments: &["--"],
+            block_comment: BLOCK_C,
+            quotes: &["'", "\""],
+            keywords: KW_SQL,
+            fold_case: true,
+            markup: false,
+        },
+        "yaml" | "yml" | "toml" | "ini" => Language {
+            line_comments: &["#"],
+            block_comment: None,
+            quotes: &["\"", "'"],
+            keywords: KW_DATA,
+            fold_case: false,
+            markup: false,
+        },
+        "css" | "scss" | "less" => Language {
+            line_comments: &[],
+            block_comment: BLOCK_C,
+            quotes: &["\"", "'"],
+            keywords: KW_CSS,
+            fold_case: false,
+            markup: false,
+        },
+        "html" | "xml" | "xhtml" | "svg" | "vue" => Language {
+            line_comments: &[],
+            block_comment: Some(("<!--", "-->")),
+            quotes: &["\"", "'"],
+            keywords: &[],
+            fold_case: false,
+            markup: true,
+        },
+        "c" | "h" | "cpp" | "c++" | "cxx" | "hpp" | "java" | "cs" | "csharp" | "go" | "php"
+        | "swift" | "kotlin" | "dart" | "scala" | "m" => Language {
+            line_comments: &["//"],
+            block_comment: BLOCK_C,
+            quotes: &["\"", "'"],
+            keywords: KW_C,
+            fold_case: false,
+            markup: false,
+        },
+        _ => return None,
+    };
+    Some(language)
+}
+
+/// Wrap a code block's tokens in spans. Anything that is not a token is copied
+/// through untouched, so the payload only grows where there is something to
+/// colour.
+fn highlight(code: &str, language: &Language) -> String {
+    let mut out = String::with_capacity(code.len() + code.len() / 8);
+    let mut plain_from = 0;
+    let mut i = 0;
+    while i < code.len() {
+        match code_token(code, i, language) {
+            Some((end, Some(class))) => {
+                escape_into(&mut out, &code[plain_from..i]);
+                span_into(&mut out, class, &code[i..end]);
+                i = end;
+                plain_from = end;
+            }
+            // An identifier that is not a keyword: consumed whole, so that no
+            // keyword can match inside a longer name.
+            Some((end, None)) => i = end,
+            None => i += char_len(code, i),
+        }
+    }
+    escape_into(&mut out, &code[plain_from..]);
+    out
+}
+
+/// The token starting at `i`, or None when `i` begins ordinary text. The second
+/// element of the pair is the span class, or None for "consume this, wrap
+/// nothing" — used for identifiers that are not keywords.
+fn code_token(code: &str, i: usize, language: &Language) -> Option<(usize, Option<Class>)> {
+    let rest = &code[i..];
+
+    for prefix in language.line_comments {
+        if rest.starts_with(prefix) {
+            let end = rest.find('\n').map(|n| i + n).unwrap_or(code.len());
+            return Some((end, Some(Class::Comment)));
+        }
+    }
+    if let Some((open, close)) = language.block_comment {
+        if rest.starts_with(open) {
+            let end = rest[open.len()..]
+                .find(close)
+                .map(|n| i + open.len() + n + close.len())
+                .unwrap_or(code.len());
+            return Some((end, Some(Class::Comment)));
+        }
+    }
+    for quote in language.quotes {
+        if rest.starts_with(quote) {
+            return Some((string_end(code, i, quote), Some(Class::Str)));
+        }
+    }
+
+    let first = rest.chars().next()?;
+    if first.is_ascii_digit() {
+        return Some((number_end(code, i), Some(Class::Number)));
+    }
+    if first.is_alphabetic() || first == '_' || first == '$' {
+        let end = ident_end(code, i);
+        let class = if is_keyword(&code[i..end], language) {
+            Some(Class::Keyword)
+        } else {
+            None
+        };
+        return Some((end, class));
+    }
+    None
+}
+
+/// End of the string opened at `i`. A single-quoted string stops at the newline,
+/// so an apostrophe in prose ("don't") cannot swallow the rest of the block;
+/// triple-quoted ones are allowed to span lines.
+fn string_end(code: &str, i: usize, quote: &str) -> usize {
+    let bytes = code.as_bytes();
+    let multiline = quote.len() > 1;
+    let mut j = i + quote.len();
+    while j < code.len() {
+        if bytes[j] == b'\\' {
+            j += 1;
+            if j < code.len() {
+                j += char_len(code, j);
+            }
+            continue;
+        }
+        if code[j..].starts_with(quote) {
+            return j + quote.len();
+        }
+        if !multiline && bytes[j] == b'\n' {
+            return j;
+        }
+        j += char_len(code, j);
+    }
+    code.len()
+}
+
+fn number_end(code: &str, i: usize) -> usize {
+    let bytes = code.as_bytes();
+    let mut j = i;
+    while j < code.len()
+        && (bytes[j].is_ascii_alphanumeric() || bytes[j] == b'.' || bytes[j] == b'_')
+    {
+        j += 1;
+    }
+    j
+}
+
+fn ident_end(code: &str, i: usize) -> usize {
+    let bytes = code.as_bytes();
+    let mut j = i;
+    while j < code.len()
+        && (bytes[j].is_ascii_alphanumeric() || bytes[j] == b'_' || bytes[j] == b'$')
+    {
+        j += 1;
+    }
+    j
+}
+
+/// Length of the character at `i`, so the scanner never splits a UTF-8 sequence.
+fn char_len(code: &str, i: usize) -> usize {
+    code[i..].chars().next().map(char::len_utf8).unwrap_or(1)
+}
+
+fn is_keyword(word: &str, language: &Language) -> bool {
+    if language.fold_case {
+        language.keywords.iter().any(|kw| kw.eq_ignore_ascii_case(word))
+    } else {
+        language.keywords.contains(&word)
+    }
+}
+
+fn escape_into(out: &mut String, text: &str) {
+    for ch in text.chars() {
+        match ch {
+            '&' => out.push_str("&amp;"),
+            '<' => out.push_str("&lt;"),
+            '>' => out.push_str("&gt;"),
+            '"' => out.push_str("&quot;"),
+            _ => out.push(ch),
+        }
+    }
+}
+
+fn span_into(out: &mut String, class: Class, text: &str) {
+    out.push_str("<span class=\"");
+    out.push_str(class.name());
+    out.push_str("\">");
+    escape_into(out, text);
+    out.push_str("</span>");
+}
+
+/// HTML/XML: comments, element names, attribute names and quoted values. Text
+/// between tags is left alone, which is why this needs its own state machine
+/// rather than the token scanner.
+fn highlight_markup(code: &str) -> String {
+    let mut out = String::with_capacity(code.len() + 32);
+    let mut i = 0;
+    let mut in_tag = false;
+    let mut seen_name = false;
+
+    while i < code.len() {
+        let rest = &code[i..];
+
+        if rest.starts_with("<!--") {
+            let end = rest[4..]
+                .find("-->")
+                .map(|n| i + 4 + n + 3)
+                .unwrap_or(code.len());
+            span_into(&mut out, Class::Comment, &code[i..end]);
+            i = end;
+            continue;
+        }
+
+        let ch = match rest.chars().next() {
+            Some(ch) => ch,
+            None => break,
+        };
+        if ch == '<' {
+            in_tag = true;
+            seen_name = false;
+        } else if ch == '>' {
+            in_tag = false;
+        } else if in_tag && (ch == '"' || ch == '\'') {
+            let end = string_end(code, i, if ch == '"' { "\"" } else { "'" });
+            span_into(&mut out, Class::Str, &code[i..end]);
+            i = end;
+            continue;
+        } else if in_tag && (ch.is_alphabetic() || ch == '_' || ch == ':') {
+            // The first name inside a tag is the element; the rest are attributes.
+            let end = ident_end(code, i);
+            let class = if seen_name { Class::Attr } else { Class::Tag };
+            seen_name = true;
+            span_into(&mut out, class, &code[i..end]);
+            i = end;
+            continue;
+        }
+
+        escape_into(&mut out, &code[i..i + ch.len_utf8()]);
+        i += ch.len_utf8();
+    }
+    out
+}
+
+/// Give fenced code blocks their token spans. Unknown languages are left exactly
+/// as the renderer emitted them. Runs before sanitising, so the allow-list still
+/// has the final say over the spans this produces.
+fn highlight_code_blocks(html: String) -> String {
+    let mut out: Option<String> = None;
+    let mut copied = 0;
+    let mut search = 0;
+
+    while let Some(offset) = html[search..].find("<pre><code") {
+        // `<pre>` is only an opening; the attributes live on the `<code>` inside.
+        let code_at = search + offset + 5;
+        let open_end = match tag_end(&html, code_at) {
+            Some(end) => end,
+            None => break,
+        };
+        search = open_end + 1;
+
+        let info = attribute_value(&html[code_at..=open_end], "class").unwrap_or_default();
+        let language = match language_for(info.strip_prefix("language-").unwrap_or("")) {
+            Some(language) => language,
+            None => continue,
+        };
+
+        let body_start = open_end + 1;
+        let close = match html[body_start..].find("</code></pre>") {
+            Some(n) => body_start + n,
+            None => continue,
+        };
+        // The renderer escaped the code text; tokenise the real thing and escape
+        // each piece on the way back out.
+        let source = unescape_entities(&html[body_start..close]);
+        let lit = if language.markup {
+            highlight_markup(&source)
+        } else {
+            highlight(&source, &language)
+        };
+
+        let buffer = out.get_or_insert_with(|| String::with_capacity(html.len() + 256));
+        buffer.push_str(&html[copied..body_start]);
+        buffer.push_str(&lit);
+        copied = close;
+    }
+
+    match out {
+        Some(mut buffer) => {
+            buffer.push_str(&html[copied..]);
+            buffer
+        }
+        None => html,
     }
 }
 
@@ -1775,6 +2241,81 @@ footnote[^1]
     fn image_dimensions_are_skipped_without_a_folder() {
         let html = render_markdown_in("![a](shot.png)\n", None);
         assert_eq!(html.matches("width=\"").count(), 0, "{html}");
+    }
+
+    /// Fenced code gets token spans so the stylesheet can colour it. Only the
+    /// tokens are wrapped, the language class survives for the code toolbar, and
+    /// a language we do not know is left exactly as the renderer wrote it.
+    #[test]
+    fn fenced_code_is_highlighted() {
+        let html = render_markdown_in("```rust\n// note\nfn main() { let x = \"hi\"; }\n```\n", None);
+        assert!(html.contains("<span class=\"tok-c\">// note</span>"), "{html}");
+        assert!(html.contains("<span class=\"tok-k\">fn</span>"), "{html}");
+        assert!(html.contains("<span class=\"tok-k\">let</span>"), "{html}");
+        // A double quote in text needs no escaping, so the sanitiser leaves it raw.
+        assert!(html.contains("<span class=\"tok-s\">\"hi\"</span>"), "{html}");
+        assert!(html.contains("class=\"language-rust\""), "{html}");
+        // Identifiers and punctuation are not wrapped.
+        assert!(html.contains(" main()"), "{html}");
+
+        let plain = render_markdown_in("```\nno language here\n```\n", None);
+        assert!(!plain.contains("tok-"), "{plain}");
+        let unknown = render_markdown_in("```cobol\nDISPLAY 'HI'.\n```\n", None);
+        assert!(!unknown.contains("tok-"), "{unknown}");
+    }
+
+    /// The code text arrives escaped and has to go back out escaped, or the
+    /// highlighted block would inject markup.
+    #[test]
+    fn highlighting_keeps_code_escaped() {
+        let html = render_markdown_in("```html\n<a href=\"x\">&amp;</a>\n```\n", None);
+        assert!(html.contains("<span class=\"tok-t\">a</span>"), "{html}");
+        assert!(html.contains("<span class=\"tok-a\">href</span>"), "{html}");
+        // The tag's own angle brackets are code text, so they leave escaped.
+        assert!(html.contains("&lt;") && html.contains("&gt;"), "{html}");
+        assert!(html.contains("&amp;amp;"), "the ampersand must stay escaped: {html}");
+
+        let injected = render_markdown_in("```js\nlet s = \"<img src=x onerror=alert(1)>\";\n```\n", None);
+        assert!(!injected.contains("<img"), "markup from inside code leaked: {injected}");
+    }
+
+    #[test]
+    fn sql_keywords_ignore_case() {
+        let html = render_markdown_in("```sql\nSELECT id FROM t WHERE x = 1\n```\n", None);
+        assert!(html.contains("<span class=\"tok-k\">SELECT</span>"), "{html}");
+        assert!(html.contains("<span class=\"tok-k\">FROM</span>"), "{html}");
+        assert!(html.contains("<span class=\"tok-n\">1</span>"), "{html}");
+    }
+
+    #[test]
+    fn python_triple_quotes_and_comments() {
+        let source = "```python\ndef f():\n    '''doc'''  # trailing\n    return \"x\"\n```\n";
+        let html = render_markdown_in(source, None);
+        assert!(html.contains("<span class=\"tok-k\">def</span>"), "{html}");
+        assert!(html.contains("<span class=\"tok-s\">'''doc'''</span>"), "{html}");
+        assert!(html.contains("<span class=\"tok-c\"># trailing</span>"), "{html}");
+    }
+
+    /// PowerShell is what a Windows project's own docs reach for, so the fence
+    /// tag has to be known (its backtick is an escape, not a quote delimiter).
+    #[test]
+    fn powershell_fences_are_highlighted() {
+        let source = "```powershell\n# note\nfunction Get-Thing { param($name) return \"$name\" }\n```\n";
+        let html = render_markdown_in(source, None);
+        assert!(html.contains("<span class=\"tok-c\"># note</span>"), "{html}");
+        assert!(html.contains("<span class=\"tok-k\">function</span>"), "{html}");
+        assert!(html.contains("<span class=\"tok-k\">param</span>"), "{html}");
+        assert!(html.contains("<span class=\"tok-k\">return</span>"), "{html}");
+    }
+
+    /// Type names are keywords in the C family, and they are most of what makes a
+    /// C or Java block look highlighted at all.
+    #[test]
+    fn c_family_types_are_keywords() {
+        let html = render_markdown_in("```c\nint main(void) { char c = 'x'; return 0; }\n```\n", None);
+        assert!(html.contains("<span class=\"tok-k\">int</span>"), "{html}");
+        assert!(html.contains("<span class=\"tok-k\">char</span>"), "{html}");
+        assert!(html.contains("<span class=\"tok-k\">return</span>"), "{html}");
     }
 
     #[test]

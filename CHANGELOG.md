@@ -9,6 +9,15 @@ the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Syntax highlighting for fenced code.** The renderer tokenises a fenced block
+  when it knows the language (Rust, JS/TS, Python, JSON, shell, SQL, YAML/TOML, CSS,
+  HTML/XML, and the C family) and emits class-carrying spans; the stylesheet colours
+  them, and every token colour measures at least 4.5:1 against the code background
+  in both themes. There is no highlighter bundle and no client-side tokenising — the
+  work happens in Rust on the render path, and a language it does not know is left
+  exactly as it was. Measured cost on a deliberately code-heavy document: 124 KiB of
+  Markdown now renders to 357 KiB of HTML in ~94 ms, against ~69 ms and 310 KiB
+  before.
 - **Reopen the last document.** Starting with no file on the command line, the
   welcome screen offers the document that was last on screen as its lead action
   ("Reopen sample.md"), so resuming is one click. The last document is simply the

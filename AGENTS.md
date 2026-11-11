@@ -63,6 +63,16 @@ backend is one Rust file. Windows is the only exercised target.
   `height: auto`, which is what lets the attributes reserve space without
   distorting. Only `render_markdown_in` with a document folder does this; passing
   `None` (most unit tests) does no filesystem I/O.
+- Fenced code is highlighted in Rust, not in the browser: `highlight_code_blocks`
+  finds each `<pre><code class="language-x">`, unescapes the text, tokenises it with
+  a per-language table (`language_for`), and writes class-carrying spans back before
+  `sanitize` runs. Only the interesting tokens get a span (comments, strings,
+  numbers, keywords, and markup tags/attributes), which keeps the payload down, and
+  the class names are deliberately short (`tok-c`, `tok-s`, `tok-n`, `tok-k`,
+  `tok-t`, `tok-a`) because they repeat per token. A language it does not know is
+  left exactly as the renderer emitted it. Colours are `--tok-*` in both themes and
+  are held to WCAG AA against `--code-bg`. The fixture in `preview/harness.html`
+  mirrors this output by hand so the CSS can be iterated without a rebuild.
 - Documents above 1 MiB of HTML are attached in 128 KiB chunks by
   `renderProgressive()`; `render()` (the small path) and it share `finishRender()`
   for everything that needs the whole document in the DOM. `enhance(root, state)`
@@ -152,7 +162,10 @@ backend is one Rust file. Windows is the only exercised target.
 ## Verification habits
 
 - `sample.md` + `sample-notes.md` exercise every renderer path (tables, tasks,
-  alerts, footnotes, definition lists, relative links, local images).
+  alerts, footnotes, definition lists, relative links, local images);
+  `highlight-demo.md` does the same for fenced code — one block per language the
+  highlighter knows, plus the traps (markup inside a string, an unknown language, no
+  language tag at all).
 - Preview harness specifics: it fakes `window.__TAURI__`, duplicates
   `src/index.html` markup (keep in sync), and exposes `window.__previewEmit` /
   `window.__previewPayload` for driving events.

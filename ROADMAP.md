@@ -90,7 +90,7 @@ The things you reach for while reading, and the render path underneath them.
 
 ## Phase 3 — exploring
 
-Not committed. Each of these wants a decision before it starts.
+Not a commitment: each open item here wants a decision before it starts.
 
 - [ ] **macOS and Linux**: packaging plus associations (macOS `Opened` events,
       Linux `.desktop` `MimeType`). Different flows from Windows; needs its own
@@ -100,8 +100,13 @@ Not committed. Each of these wants a decision before it starts.
       host. Needs signing keys and a decision about where update metadata lives.
 - [ ] **Math and diagrams** (KaTeX / Mermaid): high value for notes, high cost for
       the zero-dependency frontend. Only as opt-in, lazily loaded assets.
-- [ ] **Syntax highlighting** for fenced code, if it can be done without shipping
-      a highlighter bundle — a small tokenizer or build-time classes.
+- [x] **Syntax highlighting** for fenced code, done in Rust on the render path: a
+      small tokeniser for the languages a note is likely to use (Rust, JS/TS,
+      Python, JSON, shell, SQL, YAML/TOML, CSS, HTML/XML, the C family), emitting
+      class spans the stylesheet colours. No highlighter bundle and no client-side
+      work; unknown languages are left untouched. Measured cost on a code-heavy
+      document: ~26% more render time and ~15% more payload. Every token colour
+      measures at least 4.5:1 against the code background in both themes.
 - [ ] **UI localisation** for the chrome strings (the rendering path is already
       language-agnostic).
 
