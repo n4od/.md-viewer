@@ -1,7 +1,7 @@
 {
   "name": "md-viewer",
   "private": true,
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "A fast, minimal Markdown viewer for Windows, built with Tauri v2 and Rust.",
   "author": "N4OD (https://github.com/n4od)",
   "license": "MIT",

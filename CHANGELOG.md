@@ -7,6 +7,8 @@ the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.3.3] - 2026-11-11
+
 ### Added
 
 - **A settings panel.** A gear in the toolbar opens a dialog holding every preference
