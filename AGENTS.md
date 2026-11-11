@@ -49,6 +49,18 @@ backend is one Rust file. Windows is the only exercised target.
   `Document` payload to the webview. **Heading ids are added in JS**
   (`enhance()`), because the renderer emits plain `<h1>`; the outline and
   in-document anchors depend on that.
+- Documents above 1 MiB of HTML are attached in 128 KiB chunks by
+  `renderProgressive()`; `render()` (the small path) and it share `finishRender()`
+  for everything that needs the whole document in the DOM. `enhance(root, state)`
+  takes an optional shared `{ used, found }` so heading ids stay unique across
+  chunks, and `splitTopLevelHtml()` only cuts where element nesting is back at the
+  top level (a split mid-tag would corrupt the document). Each render bumps
+  `renderToken`; a pump that a newer render superseded stops on its next step.
+  Chunks yield with `requestAnimationFrame` — a visible frame is what makes the
+  first chunk paint — but the seam is `window.__TAURI__.scheduler.next`, which the
+  harness replaces with a synchronous runner because rAF is frozen in an occluded
+  tab. Don't switch the yield to `MessageChannel`: it fires, but a fast task chain
+  does not guarantee a paint.
 - Sanitiser details that break styling if changed: no inline `style` survives —
   table alignment is converted to `align-left|center|right` classes *before*
   sanitising, because the CSP blocks inline styles; footnote markup is
@@ -134,8 +146,10 @@ backend is one Rust file. Windows is the only exercised target.
   end, then measures timing/memory. Only pass `-WriteReport` when you intend to
   rewrite `PERFORMANCE.md`.
 - Measured facts live in `PERFORMANCE.md`; don't restate performance claims that
-  aren't there. WebView2 dominates (~0.9–1.0 s to visible window, ~132 MB private
-  for its process tree); the Rust process is ~22 MB.
+  aren't there. (That file is regenerated wholesale by `measure.ps1 -WriteReport`
+  and covers startup and memory, so render-path numbers belong with the change —
+  `CHANGELOG.md` — not in that file.) WebView2 dominates (~0.9–1.0 s to visible
+  window, ~132 MB private for its process tree); the Rust process is ~22 MB.
 
 ## Docs and versions
 

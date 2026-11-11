@@ -70,8 +70,13 @@ Small, verifiable, and mostly finishing what 0.1.0 started.
       where you stopped. Written on the leading edge of a scroll burst (so closing
       the window right after scrolling cannot lose it) and refreshed when the burst
       settles; capped at 60 documents.
-- [ ] **Progressive rendering** for documents over ~1 MB: paint the first chunk
-      and continue, instead of one long `push_html` call.
+- [x] **Progressive rendering** for documents over ~1 MB. Measured first: opening
+      is layout-bound, not parse-bound (a 1.2 MB document spent ~130 ms parsing and
+      ~1.9 s in layout), so the lever is attaching the document in pieces rather
+      than shortening `push_html`. The rendered HTML is split at top-level element
+      boundaries and attached 128 KiB at a time, yielding to the browser between
+      chunks: the first chunk paints in ~70 ms instead of after ~2.4 s, at the cost
+      of ~25% more total time from the extra layout passes.
 - [ ] **Image placeholders**: reserve space from image dimensions where available
       to avoid layout shift while local images load.
 

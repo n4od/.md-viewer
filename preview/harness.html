@@ -120,6 +120,12 @@
             (handlers[name] = handlers[name] || []).push(handler);
             return Promise.resolve(function () {});
           }
+        },
+        // Progressive rendering yields between chunks with requestAnimationFrame,
+        // which an occluded tab throttles to a standstill. Run chunks back to back
+        // here so a test can assert on the finished document.
+        scheduler: {
+          next: function (fn) { fn(); }
         }
       };
       window.__previewEmit = function (name, payload) {

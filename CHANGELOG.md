@@ -22,6 +22,15 @@ the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   Alt+C / Alt+W), persisted across sessions. The counter now reports every
   occurrence; only the first 1500 are turned into highlight ranges, so a document
   with thousands of hits stays responsive while the count remains truthful.
+- **Progressive rendering for large documents.** Above 1 MiB of rendered HTML the
+  document is split at top-level element boundaries and attached 128 KiB at a
+  time, yielding to the browser between chunks, so the top of the file paints in
+  tens of milliseconds instead of after the whole thing has been laid out. A
+  document that took ~2.4 s to appear now shows its first chunk in ~70 ms (and
+  finishes a few hundred milliseconds later — the cost of the extra layout
+  passes). Appending the chunks produces the same DOM as inserting the HTML in one
+  go, and a render that is superseded (a newer file opened mid-pump) stops
+  cleanly.
 
 ### Changed
 

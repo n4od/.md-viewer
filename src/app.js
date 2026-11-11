@@ -17,6 +17,14 @@
     // Same shape Tauri uses on Windows: http://asset.localhost/<encodeURIComponent(path)>
     return "http://asset.localhost/" + encodeURIComponent(p);
   };
+  // Hands back to the browser between progressive chunks so the top of a long
+  // document paints while the rest is still being built. Injectable because
+  // requestAnimationFrame does not fire in an occluded tab, which is how the
+  // preview harness runs; read late so a test can swap it between renders.
+  function scheduleChunk(fn) {
+    if (T.scheduler && T.scheduler.next) { T.scheduler.next(fn); return; }
+    requestAnimationFrame(fn);
+  }
 
   /* ------------------------------------------------------------------ *
    * Theme — resolved before first paint because this script is in <head>
@@ -225,6 +233,73 @@
 
     /* ---------- document rendering ---------- */
 
+    // Rendered HTML above this is built in chunks instead of one innerHTML call.
+    // Opening a large document is layout-bound, not parse-bound: a 1.2 MB
+    // document spent ~133 ms parsing and ~1.9 s in the browser's layout passes, so
+    // the win is painting the first chunk long before the last one is built.
+    var PROGRESSIVE_HTML = 1 << 20;      // 1 MiB of HTML (~400 KiB of markdown)
+    var PROGRESSIVE_CHUNK = 128 << 10;   // 128 KiB per chunk (measured sweet spot)
+    var renderToken = 0;                 // bumped per render; cancels a chunk pump
+
+    // Elements that never need a matching close tag, so they must not change the
+    // nesting depth while scanning.
+    var VOID_ELEMENTS = {
+      area: 1, base: 1, br: 1, col: 1, embed: 1, hr: 1, img: 1, input: 1,
+      link: 1, meta: 1, param: 1, source: 1, track: 1, wbr: 1
+    };
+
+    // Start of the tag that opens at `lt`, past any ">" that sits inside a quoted
+    // attribute value (the sanitizer escapes "<", "&" and '"' but not ">", so a
+    // link title can legitimately contain one).
+    function tagEnd(html, lt) {
+      var i = lt + 1;
+      var quote = 0;
+      while (i < html.length) {
+        var c = html.charAt(i);
+        if (quote) { if (c === quote) quote = 0; }
+        else if (c === '"' || c === "'") quote = c;
+        else if (c === ">") return i;
+        i++;
+      }
+      return -1;
+    }
+
+    /* Split rendered HTML into chunks no larger than `maxBytes`, cutting only
+     * where the nesting is back at the top level: each chunk is then a whole
+     * sequence of block elements, so appending the chunks in order produces the
+     * same DOM as inserting the string in one go. A single element bigger than
+     * `maxBytes` is left intact (one oversized chunk) rather than torn apart. */
+    function splitTopLevelHtml(html, maxBytes) {
+      var chunks = [];
+      var depth = 0;
+      var start = 0;
+      var i = 0;
+      while (i < html.length) {
+        var lt = html.indexOf("<", i);
+        if (lt === -1) break;
+        if (html.startsWith("<!--", lt)) {
+          var close = html.indexOf("-->", lt + 4);
+          i = close === -1 ? html.length : close + 3;
+          continue;
+        }
+        var gt = tagEnd(html, lt);
+        if (gt === -1) break;
+        var tag = html.slice(lt + 1, gt);
+        if (tag.charAt(0) === "/") {
+          depth--;
+        } else if (tag.charAt(tag.length - 1) !== "/") {
+          if (!VOID_ELEMENTS[tag.split(/[\s/]/)[0].toLowerCase()]) depth++;
+        }
+        i = gt + 1;
+        if (depth <= 0 && i - start >= maxBytes && i < html.length) {
+          chunks.push(html.slice(start, i));
+          start = i;
+        }
+      }
+      if (start < html.length) chunks.push(html.slice(start));
+      return chunks;
+    }
+
     function render(doc, options) {
       options = options || {};
       if (!doc) { showWelcome(); return; }
@@ -254,6 +329,16 @@
       footer.hidden = false;
       skipLink.hidden = false;
 
+      var token = ++renderToken;
+
+      // A large document is built and attached a chunk at a time so the first
+      // screen paints long before the last chunk exists; a small one is faster
+      // in a single pass.
+      if ((doc.html || "").length >= PROGRESSIVE_HTML) {
+        renderProgressive(doc, options, previousScroll, sameFile, token);
+        return;
+      }
+
       // Mutating the live article is fine: the browser defers style/layout until
       // the task ends, so enhance + outline cost one pass (staging the tree in a
       // detached container and moving it in measured *slower* — an extra tree move
@@ -263,6 +348,11 @@
       headings = enhance(docEl);
       headingTops = null;   // offsets changed with the document
       buildToc(headings);
+      finishRender(doc, options, previousScroll, sameFile);
+    }
+
+    /* Everything that needs the whole document already in the DOM. */
+    function finishRender(doc, options, previousScroll, sameFile) {
       updateHeader(doc);
       updateFooter(doc);
       rewriteLocalImages(doc);
@@ -305,6 +395,36 @@
       if (options.notice) toast(options.notice);
     }
 
+    /* Build a large document in top-level chunks, yielding to the browser between
+     * them. `headings` grows as chunks arrive so the outline's scroll-spy stays
+     * usable while the rest is still being attached. */
+    function renderProgressive(doc, options, previousScroll, sameFile, token) {
+      var chunks = splitTopLevelHtml(doc.html || "", PROGRESSIVE_CHUNK);
+      var state = { used: Object.create(null), found: [] };
+      var stage = document.createElement("div");
+      var index = 0;
+
+      headings = state.found;
+      docEl.textContent = "";
+      tocList.textContent = "";
+
+      function step() {
+        if (token !== renderToken) return;   // a newer render has taken over
+        stage.innerHTML = chunks[index++];
+        var from = state.found.length;
+        enhance(stage, state);
+        appendToc(state.found, from);
+        var frag = document.createDocumentFragment();
+        while (stage.firstChild) frag.appendChild(stage.firstChild);
+        docEl.appendChild(frag);
+        if (index < chunks.length) { scheduleChunk(step); return; }
+        headingTops = null;
+        if (state.found.length < 2) buildToc(state.found);   // "no headings" note
+        finishRender(doc, options, previousScroll, sameFile);
+      }
+      step();
+    }
+
     function showWelcomeState() {
       welcome.hidden = false;
       docEl.hidden = true;
@@ -313,10 +433,12 @@
       current = null;
     }
 
-    /* Add ids to headings, wrap tables/pre and give code blocks a toolbar. */
-    function enhance(root) {
-      var found = [];
-      var used = Object.create(null);
+    /* Add ids to headings, wrap tables/pre and give code blocks a toolbar.
+     * A progressive render passes a shared `state` so ids stay unique and the
+     * heading list accumulates across chunks. */
+    function enhance(root, state) {
+      var found = state ? state.found : [];
+      var used = state ? state.used : Object.create(null);
 
       root.querySelectorAll("h1, h2, h3, h4, h5, h6").forEach(function (el) {
         var id = el.getAttribute("id");
@@ -419,6 +541,15 @@
       });
     }
 
+    function tocAnchor(item) {
+      var a = document.createElement("a");
+      a.href = "#" + item.id;
+      a.className = "lvl-" + item.level;
+      a.textContent = item.el.textContent.trim();
+      a.title = a.textContent;
+      return a;
+    }
+
     function buildToc(items) {
       tocList.textContent = "";
       if (items.length < 2) {
@@ -426,14 +557,17 @@
         return;
       }
       var frag = document.createDocumentFragment();
-      items.forEach(function (item) {
-        var a = document.createElement("a");
-        a.href = "#" + item.id;
-        a.className = "lvl-" + item.level;
-        a.textContent = item.el.textContent.trim();
-        a.title = a.textContent;
-        frag.appendChild(a);
-      });
+      items.forEach(function (item) { frag.appendChild(tocAnchor(item)); });
+      tocList.appendChild(frag);
+    }
+
+    /* Append the outline entries a progressive chunk contributed, from index
+     * `from` on, without rebuilding the links already on screen. */
+    function appendToc(items, from) {
+      if (from >= items.length) return;
+      if (tocList.querySelector(".toc-empty")) tocList.textContent = "";
+      var frag = document.createDocumentFragment();
+      for (var i = from; i < items.length; i++) frag.appendChild(tocAnchor(items[i]));
       tocList.appendChild(frag);
     }
 
