@@ -34,6 +34,7 @@
   var SCALE_KEY = "mdviewer.scale";
   var RECENT_KEY = "mdviewer.recent";
   var POSITION_KEY = "mdviewer.positions";
+  var TABS_KEY = "mdviewer.tabs";
   var themePref = localStorage.getItem(THEME_KEY) || "auto";
   var darkQuery = window.matchMedia("(prefers-color-scheme: dark)");
 
@@ -170,8 +171,10 @@
     var current = null;      // last rendered document payload
     var headings = [];       // [{ id, level, el }]
     var spinner = null;
-    var tabs = [];           // [{ path, name }] in strip order
+    var tabs = [];           // [{ path, name, query, pending }] in strip order
     var activePath = null;   // the tab whose document is on screen
+    var focusAfterRender = null; // tab path that should own focus after the strip rebuilds
+    var MAX_TABS = 12;       // a cap on what a restored session can cost
 
     /* ---------- toast ---------- */
 
@@ -270,10 +273,11 @@
       if (!doc || !doc.path) return;
       var index = tabIndex(doc.path);
       if (index === -1) {
-        tabs.push({ path: doc.path, name: doc.name || doc.path });
+        tabs.push({ path: doc.path, name: doc.name || doc.path, query: "", pending: false });
         index = tabs.length - 1;
       } else {
         tabs[index].name = doc.name || doc.path;
+        tabs[index].pending = false;
       }
       activePath = doc.path;
       // Each tab keeps its own find query. Restoring it here means finishRender()
@@ -283,26 +287,61 @@
       renderTabs();
     }
 
+    /* The strip is rebuilt from `tabs` on every change, which is simple but replaces
+     * the buttons the user is standing on. A rebuild therefore has to put focus back:
+     * onto `focusAfterRender` when a command asked for it, otherwise onto whatever
+     * had it. Without this, switching tabs with the keyboard dropped focus to <body>
+     * and the strip became un-navigable after the first press. */
     function renderTabs() {
       var strip = $("tabs");
       var multiple = tabs.length > 1;
+      var hadFocus = strip.contains(document.activeElement);
+      var focused = null;
+      if (hadFocus) {
+        var wrap = document.activeElement.parentNode;
+        focused = {
+          path: wrap && wrap.dataset ? wrap.dataset.path : null,
+          close: document.activeElement.classList.contains("tab-close")
+        };
+      }
+      var wanted = focusAfterRender;
+      focusAfterRender = null;
+
       document.body.classList.toggle("has-tabs", multiple);
       strip.hidden = !multiple;
       strip.textContent = "";
-      if (!multiple) return;
+      if (!multiple) {
+        // The strip just disappeared under the focus ring; hand focus back to the
+        // document rather than letting it fall to <body>.
+        if (hadFocus) docEl.focus();
+        saveTabs();
+        return;
+      }
 
       tabs.forEach(function (tab) {
         var wrap = document.createElement("div");
         wrap.className = "tab" + (tab.path === activePath ? " active" : "");
+        wrap.setAttribute("role", "presentation");
+        wrap.dataset.path = tab.path;
 
         var open = document.createElement("button");
         open.type = "button";
         open.className = "tab-open";
         open.textContent = tab.name;
         open.title = tab.path;
-        if (tab.path === activePath) open.setAttribute("aria-current", "page");
+        open.setAttribute("role", "tab");
+        open.setAttribute("aria-selected", tab.path === activePath ? "true" : "false");
+        // Roving tabindex: the strip is one tab stop, arrows move within it.
+        open.tabIndex = tab.path === activePath ? 0 : -1;
         open.addEventListener("click", function () {
-          if (tab.path !== activePath) openPath(tab.path);
+          if (tab.path !== activePath) activateTab(tab.path);
+        });
+        // Middle-click closes, the way every tabbed app does.
+        open.addEventListener("auxclick", function (event) {
+          if (event.button === 1) {
+            event.preventDefault();
+            closeTab(tab.path);
+          }
         });
 
         var close = document.createElement("button");
@@ -320,12 +359,118 @@
       if (active && active.scrollIntoView) {
         active.scrollIntoView({ block: "nearest", inline: "nearest" });
       }
+
+      if (hadFocus || wanted) {
+        var target = tabButton(wanted || (focused && focused.path), focused && focused.close);
+        if (target) target.focus();
+        else docEl.focus();
+      }
+      saveTabs();
     }
+
+    /* Find a tab's button by path. A selector would need escaping: document paths
+     * contain backslashes and colons ("C:\notes\a.md"). */
+    function tabButton(path, close) {
+      if (!path) return null;
+      var strip = $("tabs");
+      for (var i = 0; i < strip.children.length; i++) {
+        var wrap = strip.children[i];
+        if (wrap.dataset && wrap.dataset.path === path) {
+          return wrap.querySelector(close ? ".tab-close" : ".tab-open");
+        }
+      }
+      return null;
+    }
+
+    /* Persist the strip so "Reopen the documents I had open" can rebuild it. One tab
+     * is not worth storing — the recent list already covers that case. */
+    function saveTabs() {
+      try {
+        if (tabs.length > 1) {
+          var paths = tabs.slice(0, MAX_TABS).map(function (tab) { return tab.path; });
+          localStorage.setItem(TABS_KEY, JSON.stringify({ paths: paths, active: activePath }));
+        } else {
+          localStorage.removeItem(TABS_KEY);
+        }
+      } catch (_) {}
+    }
+
+    function readTabSet() {
+      try {
+        var saved = JSON.parse(localStorage.getItem(TABS_KEY) || "null");
+        if (!saved || !Array.isArray(saved.paths)) return null;
+        var paths = saved.paths.filter(function (path) { return typeof path === "string" && path; });
+        if (paths.length < 2) return null;
+        return {
+          paths: paths.slice(0, MAX_TABS),
+          active: typeof saved.active === "string" ? saved.active : null
+        };
+      } catch (_) {
+        return null;
+      }
+    }
+
+    function nameFromPath(path) {
+      var parts = String(path).split(/[\\/]/);
+      return parts[parts.length - 1] || path;
+    }
+
+    /* Rebuild the strip from storage without reading every document: only the active
+     * tab is loaded, the rest are placeholders that load when you first switch to
+     * them. That keeps start-up at one render no matter how many tabs were open. */
+    function restoreTabs(saved) {
+      return invoke("filter_existing", { paths: saved.paths })
+        .then(function (kept) {
+          var alive = (kept || []).filter(function (path) { return saved.paths.indexOf(path) !== -1; });
+          if (!alive.length) return false;
+          if (alive.length === 1) {
+            openPath(alive[0]);
+            return true;
+          }
+          tabs = alive.map(function (path) {
+            return { path: path, name: nameFromPath(path), query: "", pending: true };
+          });
+          activePath = null;
+          var wanted = saved.active && alive.indexOf(saved.active) !== -1 ? saved.active : alive[0];
+          openPath(wanted);
+          return true;
+        })
+        .catch(function () { return false; });
+    }
+
+    function activateTab(path) {
+      if (path === activePath) {
+        focusAfterRender = path;
+        renderTabs();
+        return;
+      }
+      focusAfterRender = path;
+      openPath(path);
+    }
+
+    /* Left/right and Home/End move inside the strip and activate as they go: the
+     * content is the point of the tab, so a manual "Enter to commit" step would only
+     * add a keystroke. Focus follows the selection. */
+    $("tabs").addEventListener("keydown", function (event) {
+      if (tabs.length < 2) return;
+      var index = tabIndex(activePath);
+      var next = null;
+      if (event.key === "ArrowRight") next = index === -1 ? 0 : (index + 1) % tabs.length;
+      else if (event.key === "ArrowLeft") next = index === -1 ? 0 : (index - 1 + tabs.length) % tabs.length;
+      else if (event.key === "Home") next = 0;
+      else if (event.key === "End") next = tabs.length - 1;
+      if (next === null) return;
+      event.preventDefault();
+      activateTab(tabs[next].path);
+    });
 
     function closeTab(path) {
       var index = tabIndex(path);
       if (index === -1) return;
       tabs.splice(index, 1);
+      // Focus the tab that took this one's place, not whatever <body> ends up as.
+      var neighbour = tabs.length ? tabs[Math.min(index, tabs.length - 1)].path : null;
+      if (neighbour) focusAfterRender = neighbour;
 
       if (path !== activePath) { renderTabs(); return; }
       if (!tabs.length) {
@@ -336,9 +481,10 @@
         renderTabs();
         showWelcome();
         docEl.textContent = "";
+        $("welcome-open").focus();
         return;
       }
-      openPath(tabs[Math.min(index, tabs.length - 1)].path);
+      openPath(neighbour);
     }
 
     function showWelcome() {
@@ -1441,6 +1587,22 @@
         else readingScale = applyScale(readingScale + (event.key === "-" ? -0.1 : 0.1));
         return;
       }
+      if (mod && event.key === "Tab") {
+        // Tabs are the window's documents, so Ctrl+Tab walks them like a browser.
+        if (tabs.length < 2) return;
+        event.preventDefault();
+        var from = tabIndex(activePath);
+        var step = event.shiftKey ? -1 : 1;
+        var to = from === -1 ? 0 : (from + step + tabs.length) % tabs.length;
+        activateTab(tabs[to].path);
+        return;
+      }
+      if (mod && !event.shiftKey && event.key.toLowerCase() === "w") {
+        if (!tabs.length) return;
+        event.preventDefault();
+        closeTab(activePath);
+        return;
+      }
       if (!mod) {
         // Never hijack plain letters while the user is typing (the find field).
         if (typing) return;
@@ -1576,11 +1738,20 @@
     invoke("initial_document")
       .then(function (doc) {
         if (doc) { render(doc, { reset: true }); return; }
-        // "Reopen the last document" is safe to persist now that the settings
+        // "Reopen the documents I had open" is safe to persist now that the settings
         // panel is a permanent place to turn it back off.
         var last = reopenEnabled() ? readRecent()[0] : null;
-        if (last && last.path) openPath(last.path);
-        else showWelcome();
+        var saved = reopenEnabled() ? readTabSet() : null;
+        if (!saved) {
+          if (last && last.path) openPath(last.path);
+          else showWelcome();
+          return;
+        }
+        return restoreTabs(saved).then(function (restored) {
+          if (restored) return;
+          if (last && last.path) openPath(last.path);
+          else showWelcome();
+        });
       })
       .catch(function (error) {
         showWelcome();

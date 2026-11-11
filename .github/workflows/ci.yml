@@ -25,15 +25,16 @@ jobs:
       # The frontend is three static files with no dependencies. This keeps it that
       # way: if a change needs more room, raise the budget deliberately in review.
       # Raised 80/46 -> 88/52 after the 0.2.0 batch, 88/52 -> 96/56 once tabs, the
-      # pinned section title and the image lightbox were in, and 96/56 -> 108/62 for
-      # the settings panel, the largest single frontend change so far. Still far below
+      # pinned section title and the image lightbox were in, 96/56 -> 108/62 for
+      # the settings panel, and 108/62 -> 112/66 for the tab keyboard model (tablist
+      # semantics, roving focus, Ctrl+Tab/Ctrl+W) and session restore. Still far below
       # what a bundler or a framework would cost, which is what the ceiling is for.
       - name: Frontend size budget
         working-directory: .
         shell: pwsh
         run: |
-          $totalBudget = 108KB
-          $jsBudget    = 62KB
+          $totalBudget = 112KB
+          $jsBudget    = 66KB
           $total = (Get-ChildItem src -File | Measure-Object -Property Length -Sum).Sum
           $js    = (Get-Item src/app.js).Length
           'src/ total {0:N1} KB of {1:N0} KB; app.js {2:N1} KB of {3:N0} KB' -f `
@@ -131,14 +132,24 @@ jobs:
 
       - name: Rust toolchain
         uses: dtolnay/rust-toolchain@stable
+        with:
+          # dtolnay/rust-toolchain installs a minimal profile by default, so the
+          # formatter and the linter have to be asked for by name.
+          components: rustfmt, clippy
 
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri -> target
 
+      - name: cargo fmt
+        run: cargo fmt --check
+
       - name: cargo check
         run: cargo check --all-targets
+
+      - name: cargo clippy
+        run: cargo clippy --all-targets -- -D warnings
 
       # The registry integration test is #[ignore]d on purpose; it writes HKCU.
       - name: cargo test

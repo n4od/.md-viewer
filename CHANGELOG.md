@@ -5,27 +5,45 @@ All notable changes to MD Viewer are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.4.0] - 2026-11-12
 
 ### Added
 
+- **Tabs you can drive from the keyboard.** The strip is a real tablist now: each tab
+  reports whether it is selected, the strip is a single tab stop, and left/right plus
+  Home/End move between tabs and activate as they go. `Ctrl+Tab` / `Ctrl+Shift+Tab`
+  walk the strip and wrap around, `Ctrl+W` closes the document you are reading, and a
+  middle-click closes the tab under the pointer. Focus now stays inside the strip when
+  it is rebuilt — before this, switching dropped focus to the page and the strip became
+  un-navigable after the first key press.
+- **The documents you had open come back.** The tab set is remembered and restored at
+  start-up when *Reopen the documents I had open* is on, capped at twelve. Only the
+  document you were reading is read at start-up; the other tabs load the first time you
+  switch to them, and tabs whose file has been moved or deleted are pruned. A file named
+  on the command line still wins over the stored session.
 - **A front-end test suite, and CI runs it.** `preview/tests.html` loads the preview
-  harness in an iframe and drives the real `app.js` inside it: 43 checks over the
-  render path (heading ids, outline parity, table wrappers, copy buttons, every token
-  class, rewritten image sources), the pinned title, the image lightbox, tabs and the
-  `--tabs-h` layout variable, the settings dialog and its scroll lock, per-document
-  reading position, and progressive rendering across the 1 MiB threshold. It is a page
-  rather than a package — nothing to install, no bundler, nothing added to the size
-  budget.
+  harness in an iframe and drives the real `app.js` inside it: 68 checks over the render
+  path (heading ids, outline parity, table wrappers, copy buttons, every token class,
+  rewritten image sources), the pinned title, the image lightbox, tabs (semantics,
+  keyboard, focus, middle-click, persistence), the settings dialog and its scroll lock,
+  per-document reading position, progressive rendering across the 1 MiB threshold, and
+  session restore. It is a page rather than a package — nothing to install, no bundler,
+  nothing added to the size budget.
 - CI asks a headless browser for the settled DOM and fails unless the page reports
-  `data-result="pass"`, so a front-end regression now breaks the build instead of
-  waiting for someone to open the harness. Edge is tried first, then Chrome, and the
-  browser is given a three-minute ceiling so a hang cannot stall the job.
-- The suite records the stage it is in and fails after 20 seconds of idle time, so a
-  stall says *where* it stopped instead of leaving the page saying "running" — which is
-  how the first CI run failed: the dumped DOM had no result and nothing to act on. The
-  CI step now prints the page state, the stage and the tail of the check log, and tries
-  every installed browser rather than only the first one it finds.
+  `data-result="pass"`. Edge is tried first, then Chrome, and the browser is given a
+  three-minute ceiling so a hang cannot stall the job. The suite names the stage it is
+  in and fails after 20 seconds of idle time, and the step prints that stage plus the
+  tail of the check log, so a stall is diagnosable rather than silent.
+- **`cargo fmt --check` and `cargo clippy --all-targets -- -D warnings` are part of CI.**
+  This needed a one-time formatting pass over the backend and two `manual_strip`
+  cleanups in the code highlighter; they were the last open item from Phase 1.
+
+### Changed
+
+- The frontend size budget is raised from 108 KB / 62 KB to 112 KB / 66 KB
+  (`src/` and `app.js`) to pay for the tab keyboard model and session restore.
+- The setting is now labelled *Reopen the documents I had open*, because it restores a
+  session rather than one document.
 
 ## [0.3.4] - 2026-11-11
 

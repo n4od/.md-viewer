@@ -21,7 +21,7 @@ backend is one Rust file. Windows is the only exercised target.
 | :-- | :-- |
 | Fast compile gate | `cargo check --manifest-path src-tauri/Cargo.toml` |
 | All tests | `cargo test --manifest-path src-tauri/Cargo.toml` (33 pass, 1 ignored) |
-| Front-end tests | `node scripts/dev-server.js` → <http://localhost:8123/preview/tests.html> (43 checks, `RESULT: PASS`) |
+| Front-end tests | `node scripts/dev-server.js` → <http://localhost:8123/preview/tests.html> (68 checks, `RESULT: PASS`) |
 | One test | `cargo test --manifest-path src-tauri/Cargo.toml open_command -- --nocapture` |
 | UI iteration | `node scripts/dev-server.js` → <http://localhost:8123/preview/harness.html> |
 | Desktop layout | <http://localhost:8123/preview/wide.html> (1280×900 iframe) |
@@ -32,12 +32,14 @@ backend is one Rust file. Windows is the only exercised target.
   `npm.cmd` / `npx.cmd`, and note `node_modules` is absent, so `npm run ...`
   needs `npm install` first.
 - CI lives in `.github/workflows/ci.yml` (windows-latest: a **frontend size budget**
-  — `src/` ≤ 108 KB, `app.js` ≤ 62 KB, raised from 80/46 KB when the 0.2.0 batch
-  reached that ceiling, to 96/56 for tabs and the Phase 4 items, and to 108/62 for
-  the settings panel — then **the front-end tests** in a headless browser, then
-  `cargo check --all-targets`, then `cargo test`). The test step starts
-  `scripts/dev-server.js` itself, tries Edge then Chrome, dumps the settled DOM of
-  `/preview/tests.html`, and fails unless the page reports `data-result="pass"`;
+  — `src/` ≤ 112 KB, `app.js` ≤ 66 KB, raised from 80/46 KB when the 0.2.0 batch
+  reached that ceiling, to 96/56 for tabs and the Phase 4 items, to 108/62 for the
+  settings panel, and to 112/66 for the tab keyboard model and session restore — then
+  **the front-end tests** in a headless browser, then `cargo fmt --check`,
+  `cargo check --all-targets`, `cargo clippy -- -D warnings`, then `cargo test`).
+  The test step starts `scripts/dev-server.js` itself, tries Edge then Chrome, dumps
+  the settled DOM of `/preview/tests.html`, and fails unless the page reports
+  `data-result="pass"`;
   browsers are GUI-subsystem binaries, so `--dump-dom` output has to be redirected
   to a file rather than captured from the pipe. There is still no
   lint/format/typecheck config — don't invent `npm run lint`; `cargo check` + both
@@ -88,7 +90,19 @@ backend is one Rust file. Windows is the only exercised target.
   docked below the topbar keys off `--tabs-h` (0 or 34px), which `body.has-tabs`
   raises — headings' scroll margin, the outline drawer, the welcome height. The
   strip is hidden unless two documents are open, and a tab is a wrapper holding two
-  sibling buttons, because a button may not contain another button.
+  sibling buttons, because a button may not contain another button. The strip is a
+  `role="tablist"` (a `div`, not a `<nav>`: the role replaces the landmark), each tab
+  button is a `role="tab"` with `aria-selected` and a roving `tabindex`, and the
+  wrapper is `role="presentation"`. **`renderTabs()` rebuilds every node**, so it
+  captures which control had focus and restores it afterwards, preferring
+  `focusAfterRender` (set by an activation or a close); without that the strip lost
+  focus on the first switch and could not be navigated again. Closing down to one tab
+  clears and hides the strip, so tab-count assertions must read `strip.hidden` rather
+  than `querySelectorAll(".tab").length`. `saveTabs()` mirrors the set into
+  `mdviewer.tabs` (`{ paths, active }`, only when there are two or more), and
+  `restoreTabs()` rebuilds it as placeholders — only the stored active document is
+  read, the rest load on first activation — after `filter_existing` prunes paths whose
+  file is gone. It runs only when nothing was named on the command line.
 - Documents above 1 MiB of HTML are attached in 128 KiB chunks by
   `renderProgressive()`; `render()` (the small path) and it share `finishRender()`
   for everything that needs the whole document in the DOM. `enhance(root, state)`
@@ -195,7 +209,8 @@ backend is one Rust file. Windows is the only exercised target.
   highlighter knows, plus the traps (markup inside a string, an unknown language, no
   language tag at all).
 - Preferences live in `localStorage` under `mdviewer.*`: `theme`, `scale`, `width`,
-  `resume`, `reopen`, `geometry`, `find`, `recent` and `positions`. The settings panel
+  `resume`, `reopen`, `geometry`, `find`, `recent`, `positions` and `tabs` (the stored
+  session). The settings panel
   is the only UI over them — a native `<dialog>`, so Esc, focus trapping and focus
   return are the platform's job rather than hand-rolled — and it re-reads its state on
   every open through `syncSettings()`. The two actions it shares with the welcome
@@ -222,7 +237,7 @@ backend is one Rust file. Windows is the only exercised target.
   them for user-visible changes.
 - Licence is MIT (`LICENSE`, `Cargo.toml`, `package.json`). Don't relicense
   without an explicit instruction.
-- Version `0.3.4` lives in three places: `src-tauri/Cargo.toml`,
+- Version `0.4.0` lives in three places: `src-tauri/Cargo.toml`,
   `package.json`, `src-tauri/tauri.conf.json`. Keep them in sync.
 - Icons are generated (`scripts/make-icons.ps1`) — don't hand-edit PNG/ICO.
   `src-tauri/gen/schemas/` is generated; leave it alone. `Cargo.lock` is present

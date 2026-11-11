@@ -32,6 +32,9 @@
 <p id="summary" data-result="running">running…</p>
 <pre id="log"></pre>
 <script>
+// The suite is one async function; this lets its catch block stop the watchdog even
+// though the timer itself lives inside the function's scope.
+var stopWatchdog = function () {};
 (async function () {
   const log = document.getElementById("log");
   const summary = document.getElementById("summary");
@@ -45,6 +48,7 @@
     summary.dataset.result = "fail";
     summary.textContent = "RESULT: FAIL timed out at stage: " + stage + " (" + results.length + " checks recorded)";
   }, 20000);
+  stopWatchdog = function () { clearTimeout(watchdog); };
   function mark(next) { stage = next; summary.dataset.stage = next; }
 
   function record(name, ok, detail) {
@@ -55,6 +59,9 @@
     record(name, JSON.stringify(actual) === JSON.stringify(expected), "got " + JSON.stringify(actual) + ", want " + JSON.stringify(expected));
   }
   function ok(name, value, detail) { record(name, !!value, detail); }
+  // A microtask turn, so the fake IPC's promises have settled. Declared before the
+  // frame helpers, which use it while waiting for an iframe.
+  const tick = async function () { await Promise.resolve(); await Promise.resolve(); };
 
   // Start from a clean slate. The suite shares localStorage with the harness, so a
   // previous run would otherwise leave settings behind and the expectations would
@@ -63,23 +70,36 @@
     .filter(function (key) { return key.indexOf("mdviewer.") === 0; })
     .forEach(function (key) { localStorage.removeItem(key); });
 
+  // The load event is not a reliable barrier for an iframe: appending one fires a load
+// for its initial about:blank, and if that lands after the listener is attached the
+// suite waits on the wrong navigation. Wait for the harness markup instead, yielding
+// to a macrotask every few turns — a budget of microtasks alone cannot let a network
+// response arrive. (That is exactly how the first CI run of the session-restore check
+// saw an empty fixture.)
+  async function frameReady(frame) {
+    for (let i = 0; i < 400; i++) {
+      const framed = frame.contentDocument;
+      const win = frame.contentWindow;
+      // The markup parses before the app boots, and booting waits on DOMContentLoaded
+      // (a task, not a microtask), so the harness flag is the real "ready" signal.
+      if (framed && win && win.__previewBooted && framed.getElementById("tabs")) return framed;
+      if (i % 4 === 3) await new Promise(function (resolve) { setTimeout(resolve, 0); });
+      else await tick();
+    }
+    throw new Error("the fixture never loaded");
+  }
+
   mark("fixture load");
   const frame = document.createElement("iframe");
   frame.id = "fixture";
   frame.title = "fixture";
   frame.style.cssText = "width:1024px;height:768px;border:1px solid #ccc;margin-top:16px";
   document.body.appendChild(frame);
-  const loaded = new Promise(function (resolve, reject) {
-    frame.addEventListener("load", resolve, { once: true });
-    setTimeout(function () { reject(new Error("fixture never loaded")); }, 15000);
-  });
   frame.src = "harness.html";
-  await loaded;
+  await frameReady(frame);
 
   const win = frame.contentWindow;
   const doc = frame.contentDocument;
-  // A microtask turn, so the fake IPC's promises have settled.
-  const tick = async function () { await Promise.resolve(); await Promise.resolve(); };
   const q = function (selector) { return doc.querySelector(selector); };
   const qa = function (selector) { return Array.prototype.slice.call(doc.querySelectorAll(selector)); };
   const emit = function (payload) {
@@ -147,13 +167,72 @@
   is("--tabs-h rises for the strip", win.getComputedStyle(doc.body).getPropertyValue("--tabs-h").trim(), "34px");
   is("the new tab is active", q(".tab.active .tab-open").textContent, "second.md");
 
-  strip.querySelectorAll(".tab-open")[0].click();
+  /* the strip is a tablist, not a row of links */
+  const tabOpens = qa("#tabs .tab-open");
+  const tabCloses = qa("#tabs .tab-close");
+  is("the strip is a tablist", strip.getAttribute("role"), "tablist");
+  ok("each tab is a role=tab", tabOpens.every(function (b) { return b.getAttribute("role") === "tab"; }));
+  ok("each wrapper is presentational", qa("#tabs .tab").every(function (w) { return w.getAttribute("role") === "presentation"; }));
+  is("only the active tab is selected", tabOpens.map(function (b) { return b.getAttribute("aria-selected"); }), ["false", "true"]);
+  is("roving tabindex follows the active tab", tabOpens.map(function (b) { return b.tabIndex; }), [-1, 0]);
+
+  /* keyboard inside the strip: arrows and Home/End activate as they move */
+  function press(target, key, opts) {
+    target.dispatchEvent(new win.KeyboardEvent("keydown", Object.assign({ key: key, bubbles: true }, opts || {})));
+  }
+  const activeName = function () { return q(".tab.active .tab-open").textContent; };
+  tabOpens[1].focus();
+  press(tabOpens[1], "ArrowLeft");
   await tick(); await tick();
+  is("ArrowLeft activates the previous tab", activeName(), "sample.md");
+  is("arrow keys keep focus in the strip", doc.activeElement, q(".tab.active .tab-open"));
+
+  press(doc.activeElement, "ArrowRight");
+  await tick(); await tick();
+  is("ArrowRight activates the next tab", activeName(), "second.md");
+
+  press(doc.activeElement, "Home");
+  await tick(); await tick();
+  is("Home goes to the first tab", activeName(), "sample.md");
+  press(doc.activeElement, "End");
+  await tick(); await tick();
+  is("End goes to the last tab", activeName(), "second.md");
+
+  /* Ctrl+Tab walks the strip and wraps, like a browser */
+  press(doc.activeElement, "Tab", { ctrlKey: true });
+  await tick(); await tick();
+  is("Ctrl+Tab wraps to the first tab", activeName(), "sample.md");
+  press(doc.activeElement, "Tab", { ctrlKey: true, shiftKey: true });
+  await tick(); await tick();
+  is("Ctrl+Shift+Tab wraps back", activeName(), "second.md");
+
+  /* a click on another tab keeps focus where the user left it */
+  tabOpens[0].focus();
+  tabOpens[0].click();
+  await tick(); await tick();
+  is("clicking a tab keeps focus on it", doc.activeElement, q(".tab.active .tab-open"));
   ok("switching tabs loads that document", doc.getElementById("doc-title").textContent.indexOf("sample") !== -1, doc.getElementById("doc-title").textContent);
 
-  strip.querySelector(".tab.active .tab-close").click();
+  /* the strip is persisted so a session can be restored */
+  const savedTabs = JSON.parse(win.localStorage.getItem("mdviewer.tabs") || "null");
+  is("the tab set is stored", savedTabs && savedTabs.paths, ["C:\\notes\\md-viewer\\sample.md", "C:/notes/second.md"]);
+  is("the stored active tab is the one on screen", savedTabs && savedTabs.active, "C:\\notes\\md-viewer\\sample.md");
+
+  /* middle-click closes the tab under the pointer, not the active one */
+  tabOpens[1].dispatchEvent(new win.MouseEvent("auxclick", { button: 1, bubbles: true }));
   await tick(); await tick();
-  ok("closing the active tab promotes its neighbour", strip.hidden || strip.querySelectorAll(".tab").length === 1);
+  ok("middle-click closes a background tab", strip.hidden);
+  ok("the active document is untouched", doc.getElementById("doc-title").textContent.indexOf("sample") !== -1, doc.getElementById("doc-title").textContent);
+
+  /* Ctrl+W closes the active tab and hands focus back */
+  emit({ path: "C:/notes/second.md", name: "second.md", html: '<h1 id="s">Second</h1><p>one</p>' });
+  await tick();
+  is("the tab is back for the close test", strip.querySelectorAll(".tab").length, 2);
+  is("the second document is active again", activeName(), "second.md");
+  press(doc.activeElement, "w", { ctrlKey: true });
+  await tick(); await tick();
+  ok("Ctrl+W closes the active tab", strip.hidden);
+  is("a single tab is not persisted", win.localStorage.getItem("mdviewer.tabs"), null);
   ok("the neighbour is on screen", q("#doc h1"));
 
   /* ---------- settings ---------- */
@@ -226,13 +305,56 @@
   ok("its first heading kept its id", !!doc.getElementById("b0"));
   ok("its last heading kept its id", !!doc.getElementById("b" + (sections - 1)));
 
+  /* ---------- session restore ---------- */
+  mark("session restore");
+  // A second fixture that starts with no document (?empty=1 makes initial_document
+  // resolve null), which is the only situation where a stored session is restored —
+  // a file named on the command line still wins.
+  win.localStorage.setItem("mdviewer.reopen", "on");
+  win.localStorage.setItem("mdviewer.tabs", JSON.stringify({
+    paths: ["C:/notes/one.md", "C:/notes/gone.md", "C:/notes/two.md"],
+    active: "C:/notes/two.md"
+  }));
+  const frame2 = document.createElement("iframe");
+  frame2.id = "fixture2";
+  frame2.title = "fixture (empty start)";
+  frame2.style.cssText = "width:1024px;height:768px;border:1px solid #ccc;margin-top:16px";
+  document.body.appendChild(frame2);
+  frame2.src = "harness.html?empty=1";
+  const doc2 = await frameReady(frame2);
+  const win2 = frame2.contentWindow;
+  const q2 = function (selector) { return doc2.querySelector(selector); };
+  for (let i = 0; i < 400 && doc2.querySelectorAll("#tabs .tab").length < 2; i++) await tick();
+
+  const restoredNames = Array.prototype.map.call(doc2.querySelectorAll("#tabs .tab-open"), function (button) {
+    return button.textContent;
+  });
+  const restoredActive = q2(".tab.active .tab-open");
+  is("a stored session restores its tabs", restoredNames, ["one.md", "two.md"]);
+  is("the stored active tab is on screen", restoredActive && restoredActive.textContent, "two.md");
+  is("restoring reads only the active document", win2.__previewLoads.length, 1);
+
+  const firstRestored = doc2.querySelectorAll("#tabs .tab-open")[0];
+  if (firstRestored) firstRestored.click();
+  // The click asks Rust for the document; the harness records that immediately, but
+  // the strip only flips when the render lands.
+  for (let i = 0; i < 400; i++) {
+    const active = q2(".tab.active .tab-open");
+    if (active && active.textContent === "one.md") break;
+    await tick();
+  }
+  is("a restored tab loads when first opened", win2.__previewLoads.length, 2);
+  const afterSwitch = q2(".tab.active .tab-open");
+  is("and becomes the active document", afterSwitch && afterSwitch.textContent, "one.md");
+
   /* ---------- report ---------- */
   mark("report");
-  clearTimeout(watchdog);
+  stopWatchdog();
   const failed = results.filter(function (r) { return !r.ok; }).length;
   summary.dataset.result = failed ? "fail" : "pass";
   summary.textContent = "RESULT: " + (failed ? "FAIL" : "PASS") + " " + (results.length - failed) + "/" + results.length;
 })().catch(function (error) {
+  stopWatchdog();
   const summary = document.getElementById("summary");
   summary.dataset.result = "fail";
   summary.textContent = "RESULT: FAIL harness error at stage \"" + (summary.dataset.stage || "startup") + "\": " + ((error && error.message) || error);

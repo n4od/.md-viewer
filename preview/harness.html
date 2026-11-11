@@ -26,6 +26,12 @@
       // relative to this page, so images in the sample payload still render
       // wherever the repo is cloned.
       var DEMO_ROOT = "C:\\notes\\md-viewer\\";
+      // ?empty=1 starts with no document, so the welcome screen and the
+      // "reopen the documents I had open" path can be exercised.
+      var EMPTY_START = /(\?|&)empty=1(&|$)/.test(window.location.search);
+      // Every load_path the frontend asks for, so a test can prove that restoring
+      // a session reads one document rather than N.
+      window.__previewLoads = [];
       var payload = {
         path: DEMO_ROOT + "sample.md",
         name: "sample.md",
@@ -74,7 +80,12 @@
       window.__TAURI__ = {
         core: {
           invoke: function (command, args) {
-            if (command === "initial_document") return Promise.resolve(payload);
+            if (command === "initial_document") {
+              // app.js asks for this first, so it is the point where the suite can
+              // treat the fixture as live (DOMContentLoaded has run by now).
+              window.__previewBooted = true;
+              return Promise.resolve(EMPTY_START ? null : payload);
+            }
             if (command === "ready") return Promise.resolve();
             if (command === "reload") return Promise.resolve(Object.assign({}, payload, { words: payload.words + 1 }));
             if (command === "load_path") {
@@ -82,6 +93,7 @@
               // the name is the file name, so tab identity and labels behave as
               // they do in the app.
               var requested = (args && args.path) || "file.md";
+              window.__previewLoads.push(requested);
               return Promise.resolve(Object.assign({}, payload, {
                 path: requested,
                 name: requested.split(/[\\/]/).pop() || requested
@@ -115,7 +127,7 @@
             }
             if (command === "app_version") {
               // Mirrors Cargo.toml; the harness has no package metadata of its own.
-              return Promise.resolve("0.3.2");
+              return Promise.resolve("0.4.0");
             }
             if (command === "set_remember_geometry") return Promise.resolve();
             return Promise.resolve(null);
@@ -189,7 +201,7 @@
     </div>
   </header>
 
-  <nav id="tabs" class="tabs" aria-label="Open documents" hidden></nav>
+  <div id="tabs" class="tabs" role="tablist" aria-label="Open documents" hidden></div>
 
   <div id="sticky-head" class="sticky-head" aria-hidden="true"></div>
 
@@ -308,7 +320,7 @@
           <input id="opt-position" type="checkbox" />
         </label>
         <label class="settings-row">
-          <span class="settings-label">Reopen the last document at start</span>
+          <span class="settings-label">Reopen the documents I had open</span>
           <input id="opt-reopen" type="checkbox" />
         </label>
         <div class="settings-row">

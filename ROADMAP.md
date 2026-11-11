@@ -29,10 +29,11 @@ Packaging, continuous integration, and the ground the reader stands on.
       registry, install-directory or app-data residue. Re-run in Windows Sandbox
       (2026-11-11). The one branch a machine with WebView2 present cannot exercise
       is the download-bootstrapper, which only runs where the runtime is absent.
-- [x] **Add CI** (GitHub Actions, `windows-latest`): `cargo check --all-targets`
-      and `cargo test`, with a Cargo cache; green on `main`. `cargo fmt --check`
-      and `cargo clippy -- -D warnings` still need a one-time formatting pass
-      before they can join the workflow.
+- [x] **Add CI** (GitHub Actions, `windows-latest`): a frontend size budget, the
+      front-end test suite in a headless browser, `cargo fmt --check`,
+      `cargo check --all-targets`, `cargo clippy --all-targets -- -D warnings` and
+      `cargo test`, with a Cargo cache; green on `main`. The formatter and the linter
+      needed a one-time formatting pass first; that is done.
 - [x] **Settle the CSP question for table alignment.** Alignment is emitted as
       `align-left|center|right` classes before sanitising and inline `style` is
       rejected outright, so the CSP can never block it. Covered by tests.
@@ -137,6 +138,29 @@ Ideas that were proposed, decided and built. New ones would start here.
       recent list and claimed file types with the default-app action, remembered
       window geometry, and an About line with the running version.
 
+## Phase 5 — tabs, finished (done)
+
+Phase 3 gave the window tabs, but only for a mouse: the strip had no keyboard model and
+a session survived as one document rather than as the set. This phase closed that gap,
+and it was chosen over new reader features because the app had already committed to
+accessibility in Phase 1.
+
+- [x] **A real tablist**: `role="tab"` and `aria-selected` per tab, one tab stop for the
+      strip, roving `tabindex`, and left/right plus Home/End activating as they move.
+- [x] **Keyboard and pointer commands**: `Ctrl+Tab` / `Ctrl+Shift+Tab` with wrapping,
+      `Ctrl+W` to close the document being read, and middle-click to close the tab under
+      the pointer.
+- [x] **Focus survives the rebuild.** The strip is rebuilt whenever the set changes, so
+      the renderer records what had focus and restores it; closing a tab hands focus to
+      the neighbour, and closing down to one document hands it back to the page instead
+      of to `<body>`.
+- [x] **The session is the tab set.** `mdviewer.tabs` stores the paths and the active
+      one; "reopen the documents I had open" restores them as placeholders, reading only
+      the document that was on screen, and prunes any file that has since gone. A file
+      named on the command line still wins.
+- [x] **Covered by the suite**: semantics, roving tabindex, arrows, Home/End, both Ctrl
+      shortcuts, middle-click, focus retention, persistence and restore (68 checks).
+
 ## Not planned
 
 Listed so the answer is explicit, not to invite debate:
@@ -161,7 +185,7 @@ Listed so the answer is explicit, not to invite debate:
 
 ## Contributing to the roadmap
 
-Open an issue on GitHub ([@n4od](https://github.com/n4od)) before starting
-anything in *Phase 4*. User-visible changes get an entry in
-[CHANGELOG.md](CHANGELOG.md), and the verification habits in
+Open an issue on GitHub ([@n4od](https://github.com/n4od)) before starting anything
+new; Phase 4 is where the next idea would be listed once it is decided. User-visible
+changes get an entry in [CHANGELOG.md](CHANGELOG.md), and the verification habits in
 [AGENTS.md](AGENTS.md) apply to roadmap work too.
