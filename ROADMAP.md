@@ -22,9 +22,10 @@ decision, not a pull request.
 - **Windows first.** Other platforms are welcome once their association and
   packaging stories are actually exercised.
 
-## Near term — 0.2
+## Shipped — 0.2.0
 
-Small, verifiable, and mostly finishing what 0.1.0 started.
+Released 2026-11-11 ([CHANGELOG](CHANGELOG.md)). Started as small, verifiable
+groundwork and grew into the reading, rendering and print work below.
 
 - [x] **Exercise the installer end to end.** Silent install, one
       `MDViewer.Markdown` ProgId pointing at the installed executable, a single
@@ -42,8 +43,6 @@ Small, verifiable, and mostly finishing what 0.1.0 started.
 - [x] **Rename the bundle identifier** to `mdviewer` (was `dev.mdviewer.app`,
       which made Tauri warn about a macOS bundle-extension clash). A macOS target
       would need a reverse-DNS identifier of its own — see the macOS item below.
-- [ ] **Session continuity.** With no file argument, offer to reopen the last
-      document (opt-in, stored alongside the recent files).
 - [x] **CLI flags**: `--version`, `--help` and `--register-default` for scripted
       installs (`.wsb` logon commands, CI smoke tests), with exit codes and console
       output on demand; Windows still keeps the final default-app choice.
@@ -55,9 +54,6 @@ Small, verifiable, and mostly finishing what 0.1.0 started.
       `aria-expanded` and the current section `aria-current`; icon buttons carry
       labels; plain `j`/`k` no longer scroll while typing in the find field; muted
       text measures 4.65:1 (light) and 5.97:1 (dark), past WCAG AA.
-
-## Next — 0.3
-
 - [x] **Find upgrades**: match-case and whole-word toggles (buttons, plus Alt+C /
       Alt+W), remembered across sessions, and a count that reports every occurrence
       even when only the first 1500 are highlighted.
@@ -68,13 +64,11 @@ Small, verifiable, and mostly finishing what 0.1.0 started.
 - [x] **Recent files housekeeping**: entries whose file no longer exists are
       pruned from the list and from storage on start-up, and there is a "Clear"
       action.
-- [ ] **Print/PDF**: the print styles are hardened — chrome hidden, the light
-      palette forced (a dark-mode reader used to print near-white text on white),
-      sideways-scrolling tables and long code lines wrapped instead of clipped,
-      table headers repeated across pages, breaks avoided inside code, tables and
-      images, and a page margin set. Still open, and needing a real machine: verify
-      the output on paper, and decide the trigger — the app exposes none, so
-      WebView2's own `Ctrl+P` is currently the only path (unverified here).
+- [x] **Print styles hardened**: chrome hidden, the light palette forced (a
+      dark-mode reader used to print near-white text on white), sideways-scrolling
+      tables and long code lines wrapped instead of clipped, table headers repeated
+      across pages, breaks avoided inside code, tables and images, and a page margin
+      set.
 - [x] **Per-document reading position**, so reopening a long file returns to
       where you stopped. Written on the leading edge of a scroll burst (so closing
       the window right after scrolling cannot lose it) and refreshed when the burst
@@ -92,6 +86,16 @@ Small, verifiable, and mostly finishing what 0.1.0 started.
       the text below no longer shifts. Author values win, remote/`data:` images are
       skipped, and a render with no document folder does no I/O. Rust-side, so it
       costs nothing in the frontend size budget.
+
+## Next — 0.3
+
+- [ ] **Session continuity.** With no file argument, offer to reopen the last
+      document (opt-in, stored alongside the recent files).
+- [ ] **Print verification and trigger.** Confirm the hardened print styles on real
+      paper, and decide how printing is reached: the app exposes no trigger, so
+      WebView2's own `Ctrl+P` is currently the only path (unverified, and a page
+      cannot reliably cancel that accelerator, so binding it too could open two
+      dialogs).
 
 ## Later — exploring
 
