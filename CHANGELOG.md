@@ -32,6 +32,19 @@ the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   measurement pass whenever the layout changes (open, resize, an image loading).
 - CI enforces a frontend size budget (`src/` ≤ 80 KB, `app.js` ≤ 46 KB), so the
   "three static files, no framework" promise is checked rather than remembered.
+- Opening a document got a little cheaper. `slugify` now takes an ASCII fast path
+  (the unicode property escapes were re-run for every heading), and the outline
+  uses one delegated click listener instead of one per link. On a 500-section
+  document the whole open measured about 42 ms plain / 75 ms mixed (best of six),
+  down from 67 ms / 131 ms; a profiled breakdown puts parsing at ~4 ms and each
+  enhancement pass at 1–3 ms, so the remainder is the layout pass the browser owes
+  the visible article.
+- Two ideas were measured and rejected, and the numbers are recorded in the code
+  so they are not retried: building the article in a detached container and moving
+  it in was *slower* (211 ms vs 131 ms on an 80 KiB document — the extra tree move
+  buys no layout savings, because the browser already batches layout within a
+  task), and delegating the code-copy buttons or building the toolbar with
+  `innerHTML` saved nothing and cost more respectively.
 
 ## [0.1.1] - 2026-11-11
 

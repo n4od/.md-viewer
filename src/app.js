@@ -75,9 +75,18 @@
   }
 
   function slugify(text) {
-    return String(text)
-      .trim()
-      .toLowerCase()
+    var lowered = String(text).trim().toLowerCase();
+    // Fast path for the overwhelmingly common ASCII heading: the unicode property
+    // escapes below were the bulk of the cost for documents with hundreds of
+    // headings.
+    if (/^[\x20-\x7e]*$/.test(lowered)) {
+      return lowered
+        .replace(/[^a-z0-9\s-]/g, "")
+        .replace(/\s+/g, "-")
+        .replace(/-{2,}/g, "-")
+        .replace(/^-|-$/g, "") || "section";
+    }
+    return lowered
       .replace(/[\u2019'"`]/g, "")
       .replace(/[^\p{L}\p{N}\s-]/gu, "")
       .replace(/\s+/g, "-")
@@ -245,7 +254,12 @@
       footer.hidden = false;
       skipLink.hidden = false;
 
+      // Mutating the live article is fine: the browser defers style/layout until
+      // the task ends, so enhance + outline cost one pass (staging the tree in a
+      // detached container and moving it in measured *slower* — an extra tree move
+      // for no layout saving: 211 ms vs 131 ms on an 80 KiB document).
       docEl.innerHTML = doc.html || "";
+
       headings = enhance(docEl);
       headingTops = null;   // offsets changed with the document
       buildToc(headings);
@@ -418,11 +432,6 @@
         a.className = "lvl-" + item.level;
         a.textContent = item.el.textContent.trim();
         a.title = a.textContent;
-        a.addEventListener("click", function (event) {
-          event.preventDefault();
-          scrollToId(item.id);
-          if (window.matchMedia("(max-width: 1100px)").matches) closeToc();
-        });
         frag.appendChild(a);
       });
       tocList.appendChild(frag);
@@ -1009,6 +1018,14 @@
     $("btn-toc").addEventListener("click", toggleToc);
     $("toc-close").addEventListener("click", closeToc);
     tocScrim.addEventListener("click", closeToc);
+    // One delegated listener instead of 500 per-link ones.
+    tocList.addEventListener("click", function (event) {
+      var link = event.target.closest && event.target.closest("a[href^='#']");
+      if (!link) return;
+      event.preventDefault();
+      scrollToId(link.getAttribute("href").slice(1));
+      if (window.matchMedia("(max-width: 1100px)").matches) closeToc();
+    });
     $("btn-theme").addEventListener("click", cycleTheme);
     $("btn-theme").title = "Theme: " + themeLabels[themePref] + " (Ctrl+Shift+L)";
     $("btn-theme").setAttribute("aria-label", "Theme: " + themeLabels[themePref] + " (click to change)");
