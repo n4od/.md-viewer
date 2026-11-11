@@ -388,7 +388,7 @@ npm run build              # tauri build --no-bundle (exe only)
 npm run test               # cargo test
 ```
 
-Run the produced `MD Viewer_0.3.0_x64-setup.exe`, install, then double-click any
+Run the produced `MD Viewer_0.3.1_x64-setup.exe`, install, then double-click any
 `.md` file. If Windows asks which app to use, pick **MD Viewer** and tick
 *Always use this app*.
 
@@ -402,7 +402,7 @@ so an image without it remains the one case worth exercising explicitly.
 Unattended checks:
 
 ```powershell
-& ".\src-tauri\target\release\bundle\nsis\MD Viewer_0.3.0_x64-setup.exe" /S
+& ".\src-tauri\target\release\bundle\nsis\MD Viewer_0.3.1_x64-setup.exe" /S
 & "$env:LOCALAPPDATA\MD Viewer\uninstall.exe" /S
 ```
 
@@ -518,7 +518,7 @@ caveats that always apply to a fresh Windows instance:
 | Find | `Ctrl+F`, type `markdown` → highlights and `n/N` counter; Enter jumps, Esc closes. |
 | Outline | `Ctrl+B` opens the drawer, the current section is highlighted while scrolling. |
 | Empty/error states | Open a file, then rename it on disk and press `F5` → an inline error, the app stays usable. |
-| Command line | `src-tauri\target\release\mdviewer.exe --version` prints `mdviewer 0.3.0`; `--register-default` exits 0 and points the `MDViewer.Markdown` ProgId at that executable. |
+| Command line | `src-tauri\target\release\mdviewer.exe --version` prints `mdviewer 0.3.1`; `--register-default` exits 0 and points the `MDViewer.Markdown` ProgId at that executable. |
 | Tests | `cd src-tauri; cargo test` → 31 tests over argument parsing and CLI flags, decoding, rendering, sanitising, alignment, image sizing, syntax highlighting, recent-file filtering, installer/config consistency and render speed, plus one opt-in registry test. |
 
 ### Troubleshooting
