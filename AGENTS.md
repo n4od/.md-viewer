@@ -171,7 +171,7 @@ backend is one Rust file. Windows is the only exercised target.
   them for user-visible changes.
 - Licence is MIT (`LICENSE`, `Cargo.toml`, `package.json`). Don't relicense
   without an explicit instruction.
-- Version `0.1.0` lives in three places: `src-tauri/Cargo.toml`,
+- Version `0.2.0` lives in three places: `src-tauri/Cargo.toml`,
   `package.json`, `src-tauri/tauri.conf.json`. Keep them in sync.
 - Icons are generated (`scripts/make-icons.ps1`) — don't hand-edit PNG/ICO.
   `src-tauri/gen/schemas/` is generated; leave it alone. `Cargo.lock` is present

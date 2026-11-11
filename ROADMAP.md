@@ -1,9 +1,11 @@
 # Roadmap
 
 Where MD Viewer is going, and what it deliberately is not. Status as of
-**0.1.0** (released 2026-11-10): read-only viewer, Windows-verified, published to
-GitHub with CI, installer and in-app association both working. Installer also
-verified in Windows Sandbox (2026-11-11).
+**0.2.0** (released 2026-11-11): read-only viewer, Windows-verified, published to
+GitHub with CI, installer and in-app association both working, plus the
+accessibility pass, outline, find upgrades, reading position, progressive
+rendering of large files, section links and image sizing that landed since 0.1.1.
+Installer also verified in Windows Sandbox (2026-11-11).
 
 ## Guiding principles
 
