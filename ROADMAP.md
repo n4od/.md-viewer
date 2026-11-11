@@ -112,16 +112,9 @@ sat under *Not planned* until now — and the multiple-window half stays decline
 
 ## Phase 4 — exploring
 
-Not a commitment: each open item here wants a decision before it starts.
+Nothing open right now. Anything new starts here as an idea that wants a decision
+before it is built; the item below is the one that has been through that.
 
-- [ ] **macOS and Linux**: packaging plus associations (macOS `Opened` events,
-      Linux `.desktop` `MimeType`). Different flows from Windows; needs its own
-      verification matrix, not a port of the registry code. macOS also needs a
-      reverse-DNS bundle identifier (`mdviewer` is Windows/Linux-shaped).
-- [ ] **Auto-update** via `tauri-plugin-updater`, signed bundles, and a release
-      host. Needs signing keys and a decision about where update metadata lives.
-- [ ] **Math and diagrams** (KaTeX / Mermaid): high value for notes, high cost for
-      the zero-dependency frontend. Only as opt-in, lazily loaded assets.
 - [x] **Syntax highlighting** for fenced code, done in Rust on the render path: a
       small tokeniser for the languages a note is likely to use (Rust, JS/TS,
       Python, JSON, shell, SQL, YAML/TOML, CSS, HTML/XML, the C family), emitting
@@ -129,8 +122,6 @@ Not a commitment: each open item here wants a decision before it starts.
       work; unknown languages are left untouched. Measured cost on a code-heavy
       document: ~26% more render time and ~15% more payload. Every token colour
       measures at least 4.5:1 against the code background in both themes.
-- [ ] **UI localisation** for the chrome strings (the rendering path is already
-      language-agnostic).
 
 ## Not planned
 
@@ -146,6 +137,13 @@ Listed so the answer is explicit, not to invite debate:
 - **A "total memory < 30 MB" target** — that requires dropping the webview
   entirely; the measured tradeoff is documented in [PERFORMANCE.md](PERFORMANCE.md).
 - **A plugin system** — the security surface is not worth it for a viewer.
+- **Auto-update** — would need `tauri-plugin-updater`, signed bundles and a release
+  host, so signing keys and a decision about where update metadata lives. That is a
+  lot of machinery for a viewer that ships two files a release.
+- **macOS and Linux** — Windows is the verified target, and association plus
+  packaging are entirely different flows rather than a port: each platform would
+  need its own implementation and verification matrix. macOS would also need a
+  reverse-DNS bundle identifier (`mdviewer` is Windows/Linux-shaped).
 
 ## Contributing to the roadmap
 
