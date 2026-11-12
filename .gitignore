@@ -3,5 +3,6 @@ src-tauri/target/
 src-tauri/gen/schemas/
 *.log
 
-# Machine- and owner-specific agent rules. See AGENTS.md for the public contract.
-AGENTS.local.md
+# Local-only files: the maintainer's rules (AGENTS.local.md) and forward work
+# (ROADMAP.local.md). The public equivalents are AGENTS.md and ROADMAP.md.
+*.local.md
