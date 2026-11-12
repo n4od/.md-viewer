@@ -40,4 +40,4 @@ last reading, so picking up where you left off is one click.
 
 ---
 
-**Full Changelog**: [CHANGELOG.md](https://github.com/n4od/.md-viewer/blob/main/CHANGELOG.md)
+**Full Changelog**: [CHANGELOG.md](https://github.com/n4od/md-viewer/blob/main/CHANGELOG.md)

@@ -37,4 +37,4 @@ to two buttons, and the reading pane holds still.
 
 ---
 
-**Full Changelog**: [CHANGELOG.md](https://github.com/n4od/.md-viewer/blob/main/CHANGELOG.md)
+**Full Changelog**: [CHANGELOG.md](https://github.com/n4od/md-viewer/blob/main/CHANGELOG.md)

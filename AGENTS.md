@@ -233,9 +233,14 @@ backend is one Rust file. Windows is the only exercised target.
 
 ## Docs and versions
 
-- `README.md` is the user-facing source of truth for build/package/association
-  steps; `CHANGELOG.md` records history; `ROADMAP.md` is forward-looking. Update
-  them for user-visible changes.
+- `README.md` is the front door: what the app is, a screenshot, install and the
+  keyboard. The depth lives in `docs/` — `architecture.md` (layout, Rust render path,
+  IPC, frontend), `file-association.md`, `build-and-package.md` (builds, installer,
+  registration, the verification checklist) and `performance.md`. Screenshots are
+  committed under `docs/images/`. `CHANGELOG.md` records history; `ROADMAP.md` is
+  forward-looking. Update the relevant one for user-visible changes — a change to how
+  the app is built or registered belongs in `docs/build-and-package.md`, not the
+  README.
 - Licence is MIT (`LICENSE`, `Cargo.toml`, `package.json`). Don't relicense
   without an explicit instruction.
 - Version `0.4.0` lives in three places: `src-tauri/Cargo.toml`,

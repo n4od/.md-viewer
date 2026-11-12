@@ -31,4 +31,4 @@ full size, and the window reopens exactly where you left it.
 
 ---
 
-**Full Changelog**: [CHANGELOG.md](https://github.com/n4od/.md-viewer/blob/main/CHANGELOG.md)
+**Full Changelog**: [CHANGELOG.md](https://github.com/n4od/md-viewer/blob/main/CHANGELOG.md)
