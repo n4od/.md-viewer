@@ -41,7 +41,7 @@ association and exits with 0 or 1, with no UI. Maintenance scripts live in
   Explorer, not a copy of the app tile, and the "Open with" row keeps the app icon
   because that row represents the app.
 - **Reading first.** Progress bar, outline drawer, find (match case / whole word),
-  per-document reading position, a pinned section title, and an image lightbox. No
+  per-document reading position, a pinned section title (only once its heading scrolls out of view), and an image lightbox. No
   editing controls, because it is a viewer.
 - **Renders GitHub-flavoured Markdown:** tables, task lists, alerts, footnotes,
   definition lists, autolinks — sanitised through an allow-list before it reaches the
@@ -122,7 +122,7 @@ Most of the project can be worked on without Windows, Rust or the Tauri CLI.
 ```bash
 node scripts/dev-server.js
 # http://127.0.0.1:8123/preview/harness.html   the app, with a fake Tauri bridge
-# http://127.0.0.1:8123/preview/tests.html    72 behavioural checks
+# http://127.0.0.1:8123/preview/tests.html    76 behavioural checks
 ```
 
 **Rust renderer and tests** — any OS with Rust (on Linux this also needs Tauri's system

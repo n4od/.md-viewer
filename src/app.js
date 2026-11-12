@@ -497,9 +497,6 @@
       setActiveHeadings([]);
       closeToc();
       document.title = "MD Viewer";
-      $("doc-title").textContent = "Markdown viewer";
-      $("doc-sub").textContent = "";
-      $("doc-meta").textContent = "";
       updateProgress();
     }
 
@@ -865,23 +862,21 @@
       window.scrollTo({ top: top, behavior: "smooth" });
     }
 
+    /* Only the webview's own title: the window title bar names the document, and a tab
+     * names it again when more than one is open, so the toolbar carries no title. The
+     * reading stats moved to the footer, where the word count already lived. */
     function updateHeader(doc) {
       document.title = doc.name + " — MD Viewer";
-      $("doc-title").textContent = doc.name || "Untitled";
-      $("doc-sub").textContent = doc.dir || "";
+    }
+
+    function updateFooter(doc) {
       var bits = [];
       if (doc.words) {
         bits.push(fmtInt(doc.words) + " words");
         bits.push(Math.max(1, Math.round(doc.words / 220)) + " min");
       }
       if (doc.truncated) bits.push("truncated");
-      var meta = $("doc-meta");
-      meta.textContent = bits.join(" · ");
-      meta.title = doc.path || "";
-    }
-
-    function updateFooter(doc) {
-      $("footer-words").textContent = doc.words ? fmtInt(doc.words) + " words" : "";
+      $("footer-words").textContent = bits.join(" · ");
       var stamp = fmtStamp(doc.modified);
       var path = doc.path || "";
       $("footer-path").textContent = stamp ? path + "  ·  " + stamp : path;
@@ -998,12 +993,41 @@
         var picked = activeId ? document.getElementById(activeId) : null;
         bar.textContent = picked ? picked.textContent : (current && current.name) || "";
       }
+      updateSticky();
     }
 
-    window.addEventListener("scroll", onScroll, { passive: true });
+    /* The pinned bar repeats the heading you can already see, so it only paints once
+     * that heading has scrolled under it. Measured from CSS rather than hard-coded, and
+     * refreshed on resize; called on the scroll event itself so it never lags the text
+     * by a frame. */
+    var stickyLimit = 0;
+    function measureSticky() {
+      var root = getComputedStyle(document.documentElement);
+      var chrome = $("topbar").getBoundingClientRect().height;
+      stickyLimit = chrome + (parseFloat(root.getPropertyValue("--sticky-h")) || 0) - 6;
+    }
+    function updateSticky() {
+      if (!stickyLimit) measureSticky();
+      var picked = activeId ? document.getElementById(activeId) : null;
+      $("sticky-head").classList.toggle(
+        "on",
+        !!picked && picked.getBoundingClientRect().bottom < stickyLimit
+      );
+    }
+
+    window.addEventListener(
+      "scroll",
+      function () {
+        updateSticky();
+        onScroll();
+      },
+      { passive: true }
+    );
     window.addEventListener("resize", function () {
       headingTops = null;   // wrapping and widths change with the viewport
+      stickyLimit = 0;
       onScroll();
+      updateSticky();
     });
 
     /* ---------- contents drawer ---------- */

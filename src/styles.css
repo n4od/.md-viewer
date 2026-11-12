@@ -6,7 +6,6 @@
 :root {
   --measure: 46rem;
   --topbar-h: 48px;
-  --tabs-h: 0px;
   --sticky-h: 0px;
   --reading-scale: 1;
   --font-ui: ui-sans-serif, "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system,
@@ -192,71 +191,13 @@ body {
   border-bottom: 1px solid var(--line-soft);
 }
 
-.bar-left,
 .bar-right {
   display: flex;
   align-items: center;
   gap: 8px;
   min-width: 0;
-}
-
-.bar-left {
-  gap: 10px;
-}
-
-.mark {
-  display: grid;
-  place-items: center;
-  width: 26px;
-  height: 26px;
+  margin-left: auto;
   flex: none;
-  border-radius: 7px;
-  background: var(--text);
-  color: var(--bg);
-  font: 700 14px/1 var(--font-serif);
-  letter-spacing: -0.02em;
-  user-select: none;
-}
-
-.title-stack {
-  display: flex;
-  align-items: baseline;
-  gap: 9px;
-  min-width: 0;
-}
-
-.doc-title {
-  font-size: 0.82rem;
-  font-weight: 600;
-  letter-spacing: 0.005em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.doc-sub {
-  font-size: 0.72rem;
-  color: var(--text-faint);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 34ch;
-}
-
-.doc-sub:empty {
-  display: none;
-}
-
-.doc-meta {
-  font-size: 0.71rem;
-  color: var(--text-faint);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-  margin-right: 2px;
-}
-
-.doc-meta:empty {
-  display: none;
 }
 
 /* The gear is a filled silhouette, so it opts out of the stroke styling the rest
@@ -341,7 +282,7 @@ html.modal-open {
 /* ---------- welcome ---------- */
 
 .welcome {
-  min-height: calc(100vh - var(--topbar-h) - var(--tabs-h));
+  min-height: calc(100vh - var(--topbar-h));
   display: grid;
   place-items: center;
   padding: 3rem 1.5rem 5rem;
@@ -655,7 +596,7 @@ kbd {
   letter-spacing: -0.015em;
   color: var(--text);
   text-wrap: balance;
-  scroll-margin-top: calc(var(--topbar-h) + var(--tabs-h) + var(--sticky-h) + 18px);
+  scroll-margin-top: calc(var(--topbar-h) + var(--sticky-h) + 18px);
   position: relative;
 }
 
@@ -1123,31 +1064,22 @@ kbd {
 
 /* ---------- tabs ---------- */
 
-/* Hidden until a second document is open, so reading one document keeps exactly
- * the chrome it had before tabs existed. Everything docked below the topbar keys
- * off --tabs-h, which body.has-tabs raises to the strip's height. */
+/* The strip is part of the toolbar row: hidden until a second document is open, and
+ * when it appears it takes the space between the left edge and the buttons. One band
+ * of chrome, so nothing docks below the toolbar and --tabs-h is gone. */
 .tabs {
   display: none;
-}
-
-body.has-tabs {
-  --tabs-h: 34px;
+  flex: 1 1 auto;
+  min-width: 0;
+  align-items: center;
+  gap: 3px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
 }
 
 body.has-tabs .tabs {
-  position: sticky;
-  top: var(--topbar-h);
-  z-index: 35;
   display: flex;
-  gap: 3px;
-  align-items: stretch;
-  height: var(--tabs-h);
-  padding: 0 0.6rem;
-  overflow-x: auto;
-  overflow-y: hidden;
-  border-bottom: 1px solid var(--line-soft);
-  background: var(--bg);
-  scrollbar-width: thin;
 }
 
 /* A tab is a wrapper holding two sibling buttons: a button may not contain
@@ -1428,7 +1360,7 @@ body.has-doc {
 .sticky-head {
   display: none;
   position: fixed;
-  top: calc(var(--topbar-h) + var(--tabs-h));
+  top: var(--topbar-h);
   left: 0;
   right: 0;
   z-index: 30;
@@ -1444,7 +1376,7 @@ body.has-doc {
   font: 600 0.76rem/1 var(--font-ui);
 }
 
-body.has-doc .sticky-head {
+body.has-doc .sticky-head.on {
   display: flex;
 }
 
@@ -1452,7 +1384,7 @@ body.has-doc .sticky-head {
 
 #toc-scrim {
   position: fixed;
-  inset: calc(var(--topbar-h) + var(--tabs-h)) 0 0 0;
+  inset: var(--topbar-h) 0 0 0;
   background: rgba(8, 10, 12, 0.22);
   z-index: 48;
   animation: fade 160ms ease;
@@ -1460,7 +1392,7 @@ body.has-doc .sticky-head {
 
 .toc {
   position: fixed;
-  top: calc(var(--topbar-h) + var(--tabs-h));
+  top: var(--topbar-h);
   right: 0;
   bottom: 0;
   width: min(310px, 86vw);
@@ -1705,10 +1637,6 @@ body.has-doc .sticky-head {
   .markdown {
     padding: 2.1rem 1.15rem 3rem;
   }
-  .doc-meta,
-  .doc-sub {
-    display: none;
-  }
   .markdown h1 {
     font-size: 1.72rem;
   }
@@ -1729,9 +1657,6 @@ body.has-doc .sticky-head {
 @media (max-width: 420px) {
   #topbar {
     padding-inline: 8px;
-  }
-  .mark {
-    display: none;
   }
 }
 

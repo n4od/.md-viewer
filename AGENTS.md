@@ -25,7 +25,7 @@ useful to anyone changing the internals.
 | :-- | :-- |
 | Fast compile gate | `cargo check --manifest-path src-tauri/Cargo.toml` |
 | All tests | `cargo test --manifest-path src-tauri/Cargo.toml` (33 pass, 1 ignored) |
-| Front-end tests | `node scripts/dev-server.js` → <http://localhost:8123/preview/tests.html> (72 checks, `RESULT: PASS`) |
+| Front-end tests | `node scripts/dev-server.js` → <http://localhost:8123/preview/tests.html> (76 checks, `RESULT: PASS`) |
 | One test | `cargo test --manifest-path src-tauri/Cargo.toml open_command -- --nocapture` |
 | UI iteration | `node scripts/dev-server.js` → <http://localhost:8123/preview/harness.html> |
 | Desktop layout | <http://localhost:8123/preview/wide.html> (1280×900 iframe) |
@@ -91,11 +91,12 @@ useful to anyone changing the internals.
   document (dialog, recent list, link, drop, a second double-click, a reload) lands
   in it. Rust still tracks exactly one active document: `prepare_document` is the
   only writer of `Viewer.current`, and switching a tab is just `load_path`, which
-  re-points the watcher, the asset scope and the window title for free. Everything
-  docked below the topbar keys off `--tabs-h` (0 or 34px), which `body.has-tabs`
-  raises — headings' scroll margin, the outline drawer, the welcome height. The
-  strip is hidden unless two documents are open, and a tab is a wrapper holding two
-  sibling buttons, because a button may not contain another button. The strip is a
+  re-points the watcher, the asset scope and the window title for free. The strip lives
+  **inside the toolbar row** (`#topbar`), hidden unless two documents are open: one band
+  of chrome, and `--tabs-h` no longer exists, so nothing docks below the toolbar and the
+  offsets that used to add it (headings' scroll margin, the drawer, the pinned bar) key
+  off `--topbar-h` alone. A tab is a wrapper holding two sibling buttons, because a
+  button may not contain another button. The strip is a
   `role="tablist"` (a `div`, not a `<nav>`: the role replaces the landmark), each tab
   button is a `role="tab"` with `aria-selected` and a roving `tabindex`, and the
   wrapper is `role="presentation"`. **`renderTabs()` rebuilds every node**, so it
@@ -248,8 +249,11 @@ useful to anyone changing the internals.
   README.
 - Licence is MIT (`LICENSE`, `Cargo.toml`, `package.json`). Don't relicense
   without an explicit instruction.
-- Version `0.4.0` lives in three places: `src-tauri/Cargo.toml`,
-  `package.json`, `src-tauri/tauri.conf.json`. Keep them in sync.
+- Version `0.5.0` lives in five places, four of them mechanical:
+  `src-tauri/Cargo.toml`, `package.json`, `src-tauri/tauri.conf.json`,
+  `package-lock.json` (`npm install` rewrites it) and the `app_version` stub in
+  `preview/harness.html`. The README's `--version` example quotes it too. Grep for
+  the previous version rather than trusting memory.
 - Icons are generated (`scripts/make-icons.ps1`) — don't hand-edit PNG/ICO.
   `src-tauri/gen/schemas/` is generated; leave it alone. `Cargo.lock` is present
   and not ignored: commit it (binary crate).

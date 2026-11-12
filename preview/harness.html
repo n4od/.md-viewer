@@ -127,7 +127,7 @@
             }
             if (command === "app_version") {
               // Mirrors Cargo.toml; the harness has no package metadata of its own.
-              return Promise.resolve("0.4.0");
+              return Promise.resolve("0.5.0");
             }
             if (command === "set_remember_geometry") return Promise.resolve();
             return Promise.resolve(null);
@@ -183,15 +183,8 @@
   <div id="progress" aria-hidden="true"></div>
 
   <header id="topbar">
-    <div class="bar-left">
-      <span class="mark" aria-hidden="true">M</span>
-      <div class="title-stack">
-        <span id="doc-title" class="doc-title">Markdown viewer</span>
-        <span id="doc-sub" class="doc-sub"></span>
-      </div>
-    </div>
+    <div id="tabs" class="tabs" role="tablist" aria-label="Open documents" hidden></div>
     <div class="bar-right">
-      <span id="doc-meta" class="doc-meta"></span>
       <button id="btn-toc" class="icon-btn" type="button" title="Contents (Ctrl+B)" aria-label="Toggle contents" aria-expanded="false" aria-controls="toc">
         <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 5.5h12M4 10h8M4 14.5h10"/></svg>
       </button>
@@ -200,8 +193,6 @@
       </button>
     </div>
   </header>
-
-  <div id="tabs" class="tabs" role="tablist" aria-label="Open documents" hidden></div>
 
   <div id="sticky-head" class="sticky-head" aria-hidden="true"></div>
 

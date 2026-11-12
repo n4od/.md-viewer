@@ -143,8 +143,21 @@ var stopWatchdog = function () {};
   /* ---------- pinned section title ---------- */
   mark("pinned title");
   const bar = doc.getElementById("sticky-head");
-  ok("pinned title is visible with a document", bar && win.getComputedStyle(bar).display !== "none");
-  ok("pinned title has text", bar && bar.textContent.trim().length > 0);
+  const topbar = doc.getElementById("topbar");
+
+  /* The bar would be a duplicate while you can still see the heading it names. */
+  ok("pinned title stays out of the way while its heading is on screen", !bar.classList.contains("on"), "display " + win.getComputedStyle(bar).display);
+
+  win.scrollTo(0, 1200);
+  win.dispatchEvent(new win.Event("scroll"));
+  await tick();
+  ok("pinned title appears once the heading scrolls under", bar.classList.contains("on"), "scrollY " + win.scrollY);
+  ok("pinned title has text", bar.textContent.trim().length > 0, JSON.stringify(bar.textContent));
+
+  win.scrollTo(0, 0);
+  win.dispatchEvent(new win.Event("scroll"));
+  await tick();
+  ok("and it retreats again at the top", !bar.classList.contains("on"));
 
   /* ---------- image lightbox ---------- */
   mark("lightbox");
@@ -164,7 +177,9 @@ var stopWatchdog = function () {};
   emit({ path: "C:/notes/second.md", name: "second.md", html: '<h1 id="s">Second</h1><p>one</p>' });
   await tick();
   is("a second document opens a tab", strip.querySelectorAll(".tab").length, 2);
-  is("--tabs-h rises for the strip", win.getComputedStyle(doc.body).getPropertyValue("--tabs-h").trim(), "34px");
+  is("the tab strip shares the toolbar row", strip.parentElement, topbar);
+  ok("the toolbar keeps one row of chrome", topbar.getBoundingClientRect().height <= 49, "height " + topbar.getBoundingClientRect().height);
+  ok("the toolbar carries no duplicated title or stats", !doc.querySelector("#topbar .doc-title, #topbar .doc-sub, #topbar .doc-meta, #topbar .mark"));
   is("the new tab is active", q(".tab.active .tab-open").textContent, "second.md");
 
   /* the strip is a tablist, not a row of links */
@@ -211,7 +226,7 @@ var stopWatchdog = function () {};
   tabOpens[0].click();
   await tick(); await tick();
   is("clicking a tab keeps focus on it", doc.activeElement, q(".tab.active .tab-open"));
-  ok("switching tabs loads that document", doc.getElementById("doc-title").textContent.indexOf("sample") !== -1, doc.getElementById("doc-title").textContent);
+  ok("switching tabs loads that document", doc.title.indexOf("sample") !== -1, doc.title);
 
   /* the strip is persisted so a session can be restored */
   const savedTabs = JSON.parse(win.localStorage.getItem("mdviewer.tabs") || "null");
@@ -222,7 +237,7 @@ var stopWatchdog = function () {};
   tabOpens[1].dispatchEvent(new win.MouseEvent("auxclick", { button: 1, bubbles: true }));
   await tick(); await tick();
   ok("middle-click closes a background tab", strip.hidden);
-  ok("the active document is untouched", doc.getElementById("doc-title").textContent.indexOf("sample") !== -1, doc.getElementById("doc-title").textContent);
+  ok("the active document is untouched", doc.title.indexOf("sample") !== -1, doc.title);
 
   /* Ctrl+W closes the active tab and hands focus back */
   emit({ path: "C:/notes/second.md", name: "second.md", html: '<h1 id="s">Second</h1><p>one</p>' });

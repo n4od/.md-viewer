@@ -216,13 +216,13 @@ caveats that always apply to a fresh Windows instance:
 | Session restore | Open two documents, quit, relaunch with the *Reopen the documents I had open* setting on (no file on the command line) → the same two tabs come back with the one you were reading active; a tab whose file was deleted is dropped. |
 | Syntax highlighting | Open `samples\highlight-demo.md` → fenced code is coloured per language; the unknown-language and untagged fences stay plain. |
 | Settings | The gear opens the panel. Theme, text size and reading width apply at once and survive a restart; Esc, the close button or a click outside dismisses it, and the page behind does not scroll while it is open. |
-| Pinned section title | Scroll a long document → the bar under the toolbar names the section you are in, agreeing with the outline highlight. |
+| Pinned section title | Scroll past a heading → the bar under the toolbar names the section you are in, agreeing with the outline highlight. While the heading is still on screen the bar stays out of the way, so it never repeats what you can already read. |
 | Image lightbox | Click an image in `samples\sample.md` → it opens at full size over a dimmed backdrop; Esc or a click outside closes it. |
 | Window geometry | Resize and move the window, close it, relaunch → it returns to the same size and place (`%LOCALAPPDATA%\mdviewer\window.json`, switched in Settings). |
 | File icon | In Explorer a `.md` shows the document page icon, not the app tile. After installing, run the app once: the installer writes the app icon on the ProgId and the first launch corrects it. |
 | Command line | `src-tauri\target\release\mdviewer.exe --version` prints `mdviewer 0.4.0`; `--register-default` exits 0 and points the `MDViewer.Markdown` ProgId at that executable. |
 | Tests | `cd src-tauri; cargo test` → 33 pass, 1 ignored: argument parsing and CLI flags, decoding, rendering, sanitising, alignment, image sizing, syntax highlighting, window geometry, the embedded file icon, recent-file filtering, installer/config consistency and render speed, plus one opt-in registry test. |
-| Front-end tests | `node scripts/dev-server.js`, then open <http://localhost:8123/preview/tests.html> → `RESULT: PASS 72/72`. CI runs the same page in headless Edge (falling back to Chrome) and fails on anything but `data-result="pass"`. |
+| Front-end tests | `node scripts/dev-server.js`, then open <http://localhost:8123/preview/tests.html> → `RESULT: PASS 76/76`. CI runs the same page in headless Edge (falling back to Chrome) and fails on anything but `data-result="pass"`. |
 
 ## Front-end tests
 
@@ -258,9 +258,9 @@ Get-Content $dom -Raw | Select-String 'data-result="pass"'
 Use `127.0.0.1`, not `localhost`: the dev server binds IPv4 only. `ci.yml` does the
 same with a 60-second budget, trying Edge first and falling back to Chrome.
 
-The 72 checks cover the render path (heading ids, outline parity, table wrappers, copy
+The 76 checks cover the render path (heading ids, outline parity, table wrappers, copy
 buttons, every token class, rewritten image sources), the pinned title, the lightbox,
-tabs and the `--tabs-h` layout variable, the settings dialog including its scroll lock,
+tabs (in one toolbar row), the settings dialog including its scroll lock,
 per-document reading position, and progressive rendering across the 1 MiB threshold.
 
 Two notes for whoever adds a check:

@@ -10,11 +10,27 @@ Changes land under `[Unreleased]` first, in whichever of *Added*, *Changed*,
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-12
+
 ### Added
 
 - **`Ctrl` + wheel zooms the text**, on the same 80–160% scale as `Ctrl` `+` / `-` / `0`
   and with smaller steps, because a wheel repeats faster than a key. The event is
   intercepted, so the webview does not page-zoom instead.
+
+### Changed
+
+- **The chrome is one row instead of three.** The tab strip now lives inside the toolbar,
+  so the window keeps a single 48px band above the text instead of stacking a toolbar, a
+  tab strip and a pinned bar; `--tabs-h` is gone with it, and headings' scroll margin, the
+  outline drawer and the pinned bar all key off `--topbar-h` alone.
+- **The toolbar no longer repeats what is already on screen.** The document name (in the
+  window title bar, and again in the active tab), the folder path (in the footer) and the
+  word count (in the footer) are gone from it, as is the "M" mark, which only duplicated
+  the app icon. The footer now carries words and reading time together.
+- **The pinned section bar appears only once it is not a duplicate** — that is, after the
+  heading it names has scrolled under it. Previously it sat under the toolbar showing the
+  same words as the heading directly beneath it.
 
 ### Removed
 

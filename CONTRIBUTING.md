@@ -45,7 +45,7 @@ Then open:
 
 - <http://127.0.0.1:8123/preview/harness.html> — the app, with a fake Tauri bridge, so
   `src/*` can be edited and reloaded without building anything.
-- <http://127.0.0.1:8123/preview/tests.html> — the 72-check behavioural suite, which
+- <http://127.0.0.1:8123/preview/tests.html> — the 76-check behavioural suite, which
   drives the real `app.js` inside that harness.
 
 That is the whole setup for frontend and docs work. The server has no dependencies and
@@ -95,8 +95,8 @@ finding out on a runner:
 
 | Job | Gates |
 | :-- | :-- |
-| `windows-latest` | frontend size budget (`src/` ≤ 112 KB, `app.js` ≤ 66 KB), the 72-check front-end suite in a headless browser, `cargo fmt --check`, `cargo check --all-targets`, `cargo clippy -- -D warnings`, `cargo test` |
-| `ubuntu-latest` | the 72-check front-end suite in headless Chromium, then `cargo check --all-targets` and `cargo test` — so the browser suite and the Rust side are both verified off Windows |
+| `windows-latest` | frontend size budget (`src/` ≤ 112 KB, `app.js` ≤ 66 KB), the 76-check front-end suite in a headless browser, `cargo fmt --check`, `cargo check --all-targets`, `cargo clippy -- -D warnings`, `cargo test` |
+| `ubuntu-latest` | the 76-check front-end suite in headless Chromium, then `cargo check --all-targets` and `cargo test` — so the browser suite and the Rust side are both verified off Windows |
 
 If a change genuinely needs more frontend room, raise the budget in the same commit and
 say why. That is how the current numbers were reached.

@@ -14,17 +14,11 @@
   <div id="progress" aria-hidden="true"></div>
 
   <header id="topbar">
-    <div class="bar-left">
-      <span class="mark" aria-hidden="true">M</span>
-      <div class="title-stack">
-        <span id="doc-title" class="doc-title">Markdown viewer</span>
-        <span id="doc-sub" class="doc-sub"></span>
-      </div>
-    </div>
+    <!-- The tab strip lives in the toolbar row: one band of chrome, and the tab
+         already names the document, so the toolbar carries no title of its own. -->
+    <div id="tabs" class="tabs" role="tablist" aria-label="Open documents" hidden></div>
 
     <div class="bar-right">
-      <span id="doc-meta" class="doc-meta"></span>
-
       <button id="btn-toc" class="icon-btn" type="button" title="Contents (Ctrl+B)" aria-label="Toggle contents" aria-expanded="false" aria-controls="toc">
         <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 5.5h12M4 10h8M4 14.5h10"/></svg>
       </button>
@@ -33,8 +27,6 @@
       </button>
     </div>
   </header>
-
-  <div id="tabs" class="tabs" role="tablist" aria-label="Open documents" hidden></div>
 
   <div id="sticky-head" class="sticky-head" aria-hidden="true"></div>
 

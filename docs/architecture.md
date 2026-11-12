@@ -29,7 +29,7 @@ described separately because the boundary between them is the whole design.
 │  └─ dev-server.js                 tiny static server for the preview harness
 ├─ preview/
 │  ├─ harness.html                  index.html + a fake Tauri bridge, for CSS work
-│  ├─ tests.html                    72 behavioural checks, run in a real browser
+│  ├─ tests.html                    76 behavioural checks, run in a real browser
 │  └─ wide.html                     1280x900 iframe shell for desktop layout checks
 ├─ docs/
 │  ├─ architecture.md               this file
