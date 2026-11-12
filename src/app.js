@@ -737,23 +737,6 @@
           el.setAttribute("id", id);
         }
         used[id] = true;
-        // A hover "#" that copies a link to this section. Its glyph is a CSS
-        // pseudo-element (see styles.css), so it stays out of textContent, which
-        // the slug, the outline labels and find all read.
-        var last = el.lastElementChild;
-        if (!last || !last.classList.contains("heading-anchor")) {
-          // Pin the heading's accessible name to its visible text, so the anchor
-          // below does not append "Copy link…" to every heading a screen reader
-          // announces. The anchor stays focusable and named in its own right.
-          var text = el.textContent.trim();
-          if (text && !el.hasAttribute("aria-label")) el.setAttribute("aria-label", text);
-          var link = document.createElement("a");
-          link.className = "heading-anchor";
-          link.href = "#" + id;
-          link.title = "Copy link to this section";
-          link.setAttribute("aria-label", "Copy link to this section");
-          el.appendChild(link);
-        }
         found.push({ id: id, level: parseInt(el.tagName.slice(1), 10), el: el });
       });
 
@@ -1109,7 +1092,7 @@
       $("lightbox-img").removeAttribute("src");
     }
 
-    // Bound to the article, like the heading anchor above, so an image wrapped in
+    // Bound to the article so an image wrapped in
     // a link opens the picture instead of navigating away.
     docEl.addEventListener("click", function (event) {
       var img = event.target.closest && event.target.closest("img");
@@ -1138,21 +1121,6 @@
     });
 
     /* ---------- links ---------- */
-
-    /* A heading's anchor copies a section link instead of navigating. Bound to the
-     * article so it runs before the document-level handler below, and stops it
-     * scrolling to the section the reader is already looking at. */
-    docEl.addEventListener("click", function (event) {
-      var link = event.target.closest && event.target.closest(".heading-anchor");
-      if (!link) return;
-      event.preventDefault();
-      event.stopPropagation();
-      var anchor = link.getAttribute("href").slice(1);
-      var target = (current && current.path ? current.path : "") + "#" + anchor;
-      copyText(target).then(function (ok) {
-        toast(ok ? "Section link copied" : "Clipboard unavailable");
-      });
-    });
 
     document.addEventListener("click", async function (event) {
       var anchor = event.target.closest && event.target.closest("a[href]");
@@ -1616,6 +1584,22 @@
         }
       }
     });
+
+    /* ---------- Ctrl + wheel zoom ---------- */
+
+    /* The gesture every viewer has: Ctrl (or Cmd) plus the wheel scales the article,
+     * the same thing Ctrl + and Ctrl - do. Steps are smaller than the keyboard's
+     * because the wheel repeats quickly, and the listener is non-passive so the
+     * webview's own page zoom can be prevented. */
+    document.addEventListener(
+      "wheel",
+      function (event) {
+        if (!event.ctrlKey && !event.metaKey) return;
+        event.preventDefault();
+        readingScale = applyScale(readingScale + (event.deltaY < 0 ? 0.05 : -0.05));
+      },
+      { passive: false }
+    );
 
     /* ---------- wire the chrome ---------- */
 

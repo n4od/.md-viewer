@@ -71,13 +71,13 @@ association and exits with 0 or 1, with no UI. Maintenance scripts live in
 | `Ctrl+R` / `F5` | Reload from disk |
 | `Ctrl+Shift+L` | Cycle *system → light → dark* |
 | `Ctrl` `+` / `-` / `0` | Text size up / down / reset |
+| `Ctrl` + wheel | Text size, the same scale as above |
 | `J` / `K` | Scroll a page down / up |
 | `Alt+C` / `Alt+W` | Find: match case / whole word |
 | `Esc` | Close the find bar, drawer, lightbox or settings |
 
 Inside the tab strip: `←` `→` move between tabs, `Home` / `End` jump to the first and
-last, and a middle-click closes the tab under the pointer. Hovering a heading reveals a
-`#` that copies a link to that section.
+last, and a middle-click closes the tab under the pointer.
 
 ![MD Viewer settings dialog: theme, text size, reading width, reading and document options](docs/images/app-settings.png)
 
@@ -122,7 +122,7 @@ Most of the project can be worked on without Windows, Rust or the Tauri CLI.
 ```bash
 node scripts/dev-server.js
 # http://127.0.0.1:8123/preview/harness.html   the app, with a fake Tauri bridge
-# http://127.0.0.1:8123/preview/tests.html    68 behavioural checks
+# http://127.0.0.1:8123/preview/tests.html    72 behavioural checks
 ```
 
 **Rust renderer and tests** — any OS with Rust (on Linux this also needs Tauri's system

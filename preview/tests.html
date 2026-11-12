@@ -121,7 +121,7 @@ var stopWatchdog = function () {};
 
   const tocLinks = qa("#toc-list a");
   is("outline lists every heading", tocLinks.length, headings.length);
-  ok("outline labels carry no anchor glyph", tocLinks.every(function (a) { return a.textContent.indexOf("#") === -1; }));
+  ok("headings carry no copy-link affordance", !doc.querySelector(".heading-anchor"));
 
   const tables = qa("#doc table");
   const wraps = qa("#doc .table-scroll");
@@ -304,6 +304,32 @@ var stopWatchdog = function () {};
   is("its outline is complete too", qa("#toc-list a").length, sections);
   ok("its first heading kept its id", !!doc.getElementById("b0"));
   ok("its last heading kept its id", !!doc.getElementById("b" + (sections - 1)));
+
+  /* ---------- Ctrl+wheel zoom ---------- */
+  mark("zoom");
+  const scaleNow = function () { return win.localStorage.getItem("mdviewer.scale"); };
+  const wheel = function (deltaY, ctrl) {
+    doc.documentElement.dispatchEvent(new win.WheelEvent("wheel", {
+      deltaY: deltaY, ctrlKey: !!ctrl, bubbles: true, cancelable: true
+    }));
+  };
+  const plainBefore = scaleNow();
+  wheel(-100);
+  await tick();
+  is("a plain wheel does not zoom", scaleNow(), plainBefore);
+
+  wheel(-100, true);
+  await tick();
+  ok("Ctrl+wheel zooms in", parseFloat(scaleNow()) > parseFloat(plainBefore), plainBefore + " -> " + scaleNow());
+  const zoomedIn = scaleNow();
+  wheel(100, true);
+  await tick();
+  ok("Ctrl+wheel zooms back out", parseFloat(scaleNow()) < parseFloat(zoomedIn), zoomedIn + " -> " + scaleNow());
+
+  // The 0.8–1.6 clamp lives in applyScale, so a long spin past the floor must settle.
+  for (let i = 0; i < 40; i++) wheel(100, true);
+  await tick();
+  ok("zoom-out stops at the floor", parseFloat(scaleNow()) >= 0.8 && parseFloat(scaleNow()) < 0.85, "scale " + scaleNow());
 
   /* ---------- session restore ---------- */
   mark("session restore");

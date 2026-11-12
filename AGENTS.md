@@ -25,7 +25,7 @@ useful to anyone changing the internals.
 | :-- | :-- |
 | Fast compile gate | `cargo check --manifest-path src-tauri/Cargo.toml` |
 | All tests | `cargo test --manifest-path src-tauri/Cargo.toml` (33 pass, 1 ignored) |
-| Front-end tests | `node scripts/dev-server.js` → <http://localhost:8123/preview/tests.html> (68 checks, `RESULT: PASS`) |
+| Front-end tests | `node scripts/dev-server.js` → <http://localhost:8123/preview/tests.html> (72 checks, `RESULT: PASS`) |
 | One test | `cargo test --manifest-path src-tauri/Cargo.toml open_command -- --nocapture` |
 | UI iteration | `node scripts/dev-server.js` → <http://localhost:8123/preview/harness.html> |
 | Desktop layout | <http://localhost:8123/preview/wide.html> (1280×900 iframe) |
@@ -65,15 +65,10 @@ useful to anyone changing the internals.
   paths → reading → Markdown → loading → default handler → watcher → commands →
   setup). Unit tests live in the same file at the bottom.
 - Render path: `pulldown-cmark` (GFM) → HTML string → `ammonia` allow-list →
-  `Document` payload to the webview. **Heading ids are added in JS**
-  (`enhance()`), because the renderer emits plain `<h1>`; the outline and
-  in-document anchors depend on that. `enhance()` also adds the hover "#" anchor:
-  its glyph is a CSS pseudo-element so it never enters the heading's
-  `textContent` (ids, outline labels and find read that text), and the heading's
-  `aria-label` is pinned to its visible text so the link is not appended to every
-  heading a screen reader announces. The anchor's offset is `rem`, not `em` — an
-  `em` offset scales with the heading and pushes an `h1`'s glyph past the article's
-  padding.
+  `Document` payload to the webview. **Heading ids are added in JS** (`enhance()`),
+  because the renderer emits plain `<h1>`; the outline and in-document anchors depend
+  on that, so the ids stay even though the old hover-"#" copy-link affordance was
+  removed: a reader does not need to copy section links.
 - Local images get `width`/`height` from their file header (`image_dimensions`:
   PNG/JPEG/GIF/WebP, no decoding, first 64 KiB only, cached per render) so the
   browser reserves the box before the file loads. Author-supplied dimensions win

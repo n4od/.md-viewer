@@ -29,7 +29,7 @@ described separately because the boundary between them is the whole design.
 │  └─ dev-server.js                 tiny static server for the preview harness
 ├─ preview/
 │  ├─ harness.html                  index.html + a fake Tauri bridge, for CSS work
-│  ├─ tests.html                    68 behavioural checks, run in a real browser
+│  ├─ tests.html                    72 behavioural checks, run in a real browser
 │  └─ wide.html                     1280x900 iframe shell for desktop layout checks
 ├─ docs/
 │  ├─ architecture.md               this file
@@ -215,7 +215,8 @@ Extras implemented in plain JS:
   API: matches are highlighted without mutating the DOM. Match-case and whole-word
   toggles (`Alt+C` / `Alt+W`) persist, and the counter stays accurate past the
   1500-highlight cap.
-* **Reading size** (`Ctrl` + `+` / `-` / `0`) scales the article through the
+* **Reading size** (`Ctrl` + `+` / `-` / `0`, or `Ctrl` + wheel) scales the article
+  through the
   `--reading-scale` custom property.
 * **Recent files** list on the empty state, kept in `localStorage`.
 * **Reading position** remembered per document, so a long file reopens where you

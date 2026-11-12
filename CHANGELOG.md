@@ -10,6 +10,19 @@ Changes land under `[Unreleased]` first, in whichever of *Added*, *Changed*,
 
 ## [Unreleased]
 
+### Added
+
+- **`Ctrl` + wheel zooms the text**, on the same 80–160% scale as `Ctrl` `+` / `-` / `0`
+  and with smaller steps, because a wheel repeats faster than a key. The event is
+  intercepted, so the webview does not page-zoom instead.
+
+### Removed
+
+- **The hover `#` beside headings, which copied a section link.** Headings keep their
+  ids, so the outline and in-document links (`[text](#heading)`) behave exactly as
+  before; the affordance, its styles and its click handler are gone, and the front-end
+  suite now fails if one reappears by accident.
+
 ## [0.4.0] - 2026-11-12
 
 ### Added

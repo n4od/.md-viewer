@@ -659,34 +659,6 @@ kbd {
   position: relative;
 }
 
-/* Hover "#" beside a heading, for copying a link to that section. The glyph is a
- * pseudo-element so it never enters the heading's textContent (heading ids, the
- * outline labels and find all read that text). Qualified with .markdown so it
- * beats the .markdown a link styling. The offset is rem, not em: an em offset
- * would scale with the heading and push an h1# past the article's padding. */
-.markdown .heading-anchor {
-  position: absolute;
-  left: -1.3rem;
-  top: 0.08em;
-  width: 1.1rem;
-  text-align: center;
-  font-weight: 400;
-  color: var(--text-faint);
-  text-decoration: none;
-  opacity: 0;
-  transition: opacity 110ms ease, color 110ms ease;
-}
-.markdown .heading-anchor::after {
-  content: "#";
-}
-.markdown :is(h1, h2, h3, h4, h5, h6):hover .heading-anchor,
-.markdown .heading-anchor:focus-visible {
-  opacity: 1;
-}
-.markdown .heading-anchor:hover {
-  color: var(--accent);
-}
-
 .markdown h1 {
   font-size: 2rem;
   letter-spacing: -0.03em;
