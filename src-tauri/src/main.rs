@@ -1431,6 +1431,7 @@ fn install_file_icon() -> Option<String> {
 /// the executable - so a machine that has been installed but never launched shows the
 /// app tile for every `.md`. Once the ProgId is ours, move it to the document icon.
 /// Quiet by design: one value, and only when the key already exists.
+#[cfg(windows)]
 fn ensure_file_icon() {
     use winreg::enums::{HKEY_CURRENT_USER, KEY_READ, KEY_WRITE};
     use winreg::RegKey;
@@ -1451,6 +1452,10 @@ fn ensure_file_icon() {
         shell_default::notify_shell();
     }
 }
+
+/// Off Windows there is no ProgId to point at the icon, so there is nothing to repair.
+#[cfg(not(windows))]
+fn ensure_file_icon() {}
 
 const PROG_ID: &str = "MDViewer.Markdown";
 const APP_NAME: &str = "MD Viewer";
