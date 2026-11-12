@@ -8,7 +8,7 @@ tags: [demo, markdown]
 This file exists to exercise every rendering path in one pass. Double-click it
 in Explorer (after registering the association) or drop it on the window.
 
-![Application icon](../src-tauri/icons/icon.png)
+![A sample image](images/demo.png)
 
 ## Text, emphasis and inline code
 
@@ -78,9 +78,15 @@ npm run tauri dev -- -- "samples\sample.md"
 
 ### Images and rules
 
-Images resolve relative to this file's folder:
+Images resolve relative to this file's folder — the app grants read access to that folder, and nothing above it:
 
-![Icon, again](../src-tauri/icons/32x32.png)
+![The same image, again](images/demo.png)
+
+<img src="images/demo.png" alt="The same image with author-set dimensions" width="160" height="90">
+
+A raw `<img>` with `width`/`height` keeps the author's values; the plain Markdown image
+above gets its size read from the PNG header instead, so the page does not jump while
+the file loads.
 
 ---
 

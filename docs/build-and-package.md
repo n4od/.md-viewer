@@ -206,7 +206,7 @@ caveats that always apply to a fresh Windows instance:
 | Drag & drop | Drop any `.md` file onto the window → overlay, then the document. |
 | Live reload | Edit `samples\sample.md` in another editor and save → content updates, scroll position kept, a toast confirms. |
 | Relative links | In `samples\sample.md`, click *the other sample* → loads `sample-notes.md`; click the external CommonMark link → default browser opens. |
-| Local images | The icon images in `samples\sample.md` render (asset protocol); they are referenced as `../src-tauri/icons/…` now that the samples live in a folder. |
+| Local images | The images in `samples\sample.md` render (asset protocol). They live in `samples\images\` and are referenced relatively: Rust grants the document's own folder and nothing outside it, so an image in a sibling folder is refused by design. |
 | Theme | `Ctrl+Shift+L` cycles system/light/dark; flipping Windows' theme follows when set to *system*. |
 | Find | `Ctrl+F`, type `markdown` → highlights and `n/N` counter; Enter jumps, Esc closes. |
 | Outline | `Ctrl+B` opens the drawer, the current section is highlighted while scrolling. |

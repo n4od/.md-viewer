@@ -213,8 +213,10 @@ useful to anyone changing the internals.
   tasks, alerts, footnotes, definition lists, relative links, local images);
   `samples/highlight-demo.md` does the same for fenced code — one block per language the
   highlighter knows, plus the traps (markup inside a string, an unknown language, no
-  language tag at all). The images in `sample.md` point at `../src-tauri/icons/…`, so
-  keep that relative path in step if either folder moves.
+  language tag at all). The images in `samples/sample.md` live in `samples/images/` and
+  are referenced relatively, because the asset protocol grants the document's own folder
+  and nothing above it: an image outside that folder is refused, and the document shows a
+  broken image rather than an error. Keep sample images inside the samples folder.
 - Preferences live in `localStorage` under `mdviewer.*`: `theme`, `scale`, `width`,
   `resume`, `reopen`, `geometry`, `find`, `recent`, `positions` and `tabs` (the stored
   session). The settings panel

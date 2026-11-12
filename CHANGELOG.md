@@ -32,6 +32,14 @@ Changes land under `[Unreleased]` first, in whichever of *Added*, *Changed*,
   heading it names has scrolled under it. Previously it sat under the toolbar showing the
   same words as the heading directly beneath it.
 
+### Fixed
+
+- **The sample documents show their images again.** When the samples moved into
+  `samples/`, their images kept pointing at `../src-tauri/icons/`, which the asset
+  protocol refuses by design — it grants the open document's folder and nothing above it.
+  They now live in `samples/images/` and are referenced relatively, which is also what the
+  document itself explains.
+
 ### Removed
 
 - **The hover `#` beside headings, which copied a section link.** Headings keep their
