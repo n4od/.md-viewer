@@ -152,7 +152,9 @@ Full walkthrough, including the file-association registration and the installer 
 
 ## Contributing
 
-Issues and questions are welcome. Two things worth knowing before proposing a change:
+Issues and questions are welcome — use the issue templates for bugs and feature
+requests, and [Discussions](https://github.com/n4od/md-viewer/discussions) for
+questions and ideas. Two things worth knowing before proposing a change:
 
 - **The constraints are architectural.** Three static files, no bundler or framework,
   a hard size budget, no new frontend dependencies, and read-only behaviour. A change

@@ -108,7 +108,8 @@ say why. That is how the current numbers were reached.
 - **Tests travel with the behaviour.** Rust changes get a unit test in
   `src-tauri/src/main.rs`; frontend behaviour gets a check in `preview/tests.html`.
 - **Docs are part of the change.** The README is the front door, the depth lives in
-  `docs/`, and user-visible changes get a [CHANGELOG.md](CHANGELOG.md) entry.
+  `docs/`, and user-visible changes get an entry under `## [Unreleased]` in
+  [CHANGELOG.md](CHANGELOG.md).
 - **Screenshots** for anything that changes what the app looks like.
 - **Commit messages** in the imperative mood, with the *why* in the body rather than a
   restatement of the diff.
@@ -116,9 +117,12 @@ say why. That is how the current numbers were reached.
 
 Contributions are accepted under the project's [MIT licence](LICENSE).
 
-## Reporting bugs and security issues
+## Reporting bugs, questions and security issues
 
 - Bugs and feature requests: use the issue templates.
+- Questions, ideas, and "how do I…": open a
+  [discussion](https://github.com/n4od/md-viewer/discussions) rather than an issue —
+  that keeps the tracker for things that are actionable.
 - Security problems: **do not open a public issue**. Follow [SECURITY.md](SECURITY.md).
 
 ## Code of conduct
