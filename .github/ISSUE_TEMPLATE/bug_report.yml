@@ -1,0 +1,73 @@
+name: Bug report
+description: Something renders wrong, crashes, or does not behave as documented.
+title: "[bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. For a **security** issue, please do not use this form —
+        [report it privately](https://github.com/n4od/md-viewer/security/advisories/new) instead.
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: "Settings → About, or `mdviewer.exe --version`."
+      placeholder: "0.4.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: How is it installed?
+      options:
+        - Installer (setup.exe)
+        - Portable exe
+        - Built from source
+    validations:
+      required: true
+  - type: input
+    id: windows
+    attributes:
+      label: Windows version
+      placeholder: "Windows 11 24H2 (26100)"
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open samples/sample.md
+        2. Scroll to the code blocks
+        3. …
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What actually happened
+      description: For rendering problems a screenshot is worth a paragraph.
+    validations:
+      required: true
+  - type: textarea
+    id: document
+    attributes:
+      label: Minimal document (for rendering issues)
+      description: The smallest Markdown that shows the problem, with anything private removed.
+      render: markdown
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I am running the latest release.
+          required: true
+        - label: I searched the existing issues.
+          required: true

@@ -1,0 +1,40 @@
+name: Feature request
+description: Propose something the viewer should do, or do differently.
+title: "[feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please check [ROADMAP.md](https://github.com/n4od/md-viewer/blob/main/ROADMAP.md)
+        first: it lists what is planned **and what is deliberately refused**, with the
+        reasoning. MD Viewer is a reader — editing, printing/PDF export, a plugin system
+        and auto-update are all documented non-goals.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem are you trying to solve?
+      description: Describe the situation you are in, not the implementation you have in mind.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What should it do?
+      description: A sentence or two is enough. Screenshots or a mock-up help.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you considered
+      description: Including "another tool does this" — that is useful information too.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I read ROADMAP.md and this is not listed under "Not planned".
+          required: true
+        - label: This keeps the viewer read-only, with no new frontend frameworks or bundlers.
+          required: true

@@ -152,9 +152,13 @@ Issues and questions are welcome. Two things worth knowing before proposing a ch
 - **The roadmap says no on purpose.** [ROADMAP.md](ROADMAP.md) lists what is refused as
   well as what is planned; a feature there marked *not planned* has a reason attached.
 
+The details — how to build, what CI enforces, what a pull request should contain — are
+in [CONTRIBUTING.md](CONTRIBUTING.md). Participation is covered by the
+[Code of Conduct](CODE_OF_CONDUCT.md).
+
 Security issues: please report them privately through
 [GitHub security advisories](https://github.com/n4od/md-viewer/security/advisories/new)
-rather than in a public issue.
+rather than in a public issue, as described in [SECURITY.md](SECURITY.md).
 
 ## Credits & licence
 

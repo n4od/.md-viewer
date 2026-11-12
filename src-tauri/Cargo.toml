@@ -6,6 +6,10 @@ authors = ["N4OD"]
 edition = "2021"
 rust-version = "1.90"
 license = "MIT"
+repository = "https://github.com/n4od/md-viewer"
+homepage = "https://github.com/n4od/md-viewer#readme"
+keywords = ["markdown", "viewer", "desktop", "tauri", "windows"]
+categories = ["gui"]
 
 [[bin]]
 name = "mdviewer"
