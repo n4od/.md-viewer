@@ -43,9 +43,10 @@ useful to anyone changing the internals.
   items, to 108/62 for the settings panel, and to 112/66 for the tab keyboard model and
   session restore — then **the front-end tests** in a headless browser, then
   `cargo fmt --check`, `cargo check --all-targets`, `cargo clippy -- -D warnings`, then
-  `cargo test`. **ubuntu-latest** runs `cargo check --all-targets` and `cargo test` after
-  installing Tauri's Linux prerequisites, which is what keeps the "the Rust side is
-  portable" claim honest; it does not build a package.
+  `cargo test`. **ubuntu-latest** installs Tauri's Linux prerequisites, then runs the
+  **front-end suite** in headless Chromium, `cargo check --all-targets` and `cargo test`,
+  which is what keeps the "the Rust side is portable and so is the suite" claim honest;
+  it does not build a package.
   The test step starts `scripts/dev-server.js` itself, tries Edge then Chrome, dumps
   the settled DOM of `/preview/tests.html`, and fails unless the page reports
   `data-result="pass"`;

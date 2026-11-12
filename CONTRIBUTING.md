@@ -96,7 +96,7 @@ finding out on a runner:
 | Job | Gates |
 | :-- | :-- |
 | `windows-latest` | frontend size budget (`src/` ≤ 112 KB, `app.js` ≤ 66 KB), the 68-check front-end suite in a headless browser, `cargo fmt --check`, `cargo check --all-targets`, `cargo clippy -- -D warnings`, `cargo test` |
-| `ubuntu-latest` | `cargo check --all-targets` and `cargo test`, to prove the Rust side stays portable |
+| `ubuntu-latest` | the 68-check front-end suite in headless Chromium, then `cargo check --all-targets` and `cargo test` — so the browser suite and the Rust side are both verified off Windows |
 
 If a change genuinely needs more frontend room, raise the budget in the same commit and
 say why. That is how the current numbers were reached.

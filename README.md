@@ -143,8 +143,9 @@ npm run bundle
 CI enforces the constraints as well as the tests: a **frontend size budget**
 (`src/` ≤ 112 KB, `app.js` ≤ 66 KB), the front-end suite in a headless browser,
 `cargo fmt --check`, `cargo clippy -- -D warnings` and `cargo test` on Windows; on
-Ubuntu it runs `cargo check --all-targets` and `cargo test` so the Rust side stays
-portable.
+Ubuntu the same front-end suite runs in headless Chromium alongside
+`cargo check --all-targets` and `cargo test`, so neither the browser suite nor the Rust
+side depends on Windows.
 
 Full walkthrough, including the file-association registration and the installer checks:
 [docs/build-and-package.md](docs/build-and-package.md).

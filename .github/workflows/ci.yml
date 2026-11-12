@@ -196,3 +196,43 @@ jobs:
         run: cargo test
         env:
           RUST_BACKTRACE: 1
+
+      # The suite is browser-agnostic and the harness needs no Tauri, so run it here
+      # too: a Linux contributor should not be the first to find out it breaks off
+      # Windows. bash rather than the Windows step's PowerShell: same idea, different
+      # way of launching a browser and redirecting its output.
+      - name: Front-end tests
+        working-directory: .
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/dev-server.js 8123 &
+          server=$!
+          trap 'kill "$server" 2>/dev/null || true' EXIT
+
+          base=http://127.0.0.1:8123
+          ready=""
+          for _ in $(seq 1 40); do
+            if curl -fsS "$base/preview/tests.html" >/dev/null; then ready=1; break; fi
+            sleep 0.25
+          done
+          if [ -z "$ready" ]; then echo "the preview server never came up on $base"; exit 1; fi
+
+          browser=$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)
+          if [ -z "$browser" ]; then echo "no Chromium-based browser found"; exit 1; fi
+          echo "browser: $browser"
+
+          dom="$RUNNER_TEMP/mdviewer-tests-dom.html"
+          timeout 180 "$browser" --headless=new --disable-gpu --no-sandbox \
+            --disable-logging --log-level=3 --hide-scrollbars \
+            --user-data-dir="$RUNNER_TEMP/mdviewer-chrome-profile" \
+            --virtual-time-budget=60000 --dump-dom "$base/preview/tests.html" \
+            > "$dom" 2>/dev/null || true
+
+          if [ ! -s "$dom" ]; then echo "the browser produced no DOM"; exit 1; fi
+          grep -o 'RESULT: [A-Z]* [0-9]*/[0-9]*' "$dom" | head -1 || echo "no RESULT line in the DOM"
+          if ! grep -q 'data-result="pass"' "$dom"; then
+            grep -o 'FAIL [^<]*' "$dom" | head -20 || true
+            echo "front-end tests failed on Linux"
+            exit 1
+          fi
