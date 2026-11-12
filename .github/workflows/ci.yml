@@ -156,3 +156,43 @@ jobs:
         run: cargo test
         env:
           RUST_BACKTRACE: 1
+
+  # The app is packaged on Windows, but the Rust side is meant to be portable and
+  # contributions should not require a Windows machine. This job is what keeps that
+  # claim honest: it compiles and tests the crate on Linux. It builds no package.
+  linux:
+    name: check & test (Linux)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src-tauri
+    env:
+      CARGO_TERM_COLOR: always
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Tauri's Linux build dependencies. Keep this list in step with
+      # https://v2.tauri.app/start/prerequisites/ — CONTRIBUTING.md points here.
+      - name: System dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev \
+            libxdo-dev libssl-dev build-essential curl wget file
+
+      - name: Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+
+      - name: cargo check
+        run: cargo check --all-targets
+
+      - name: cargo test
+        run: cargo test
+        env:
+          RUST_BACKTRACE: 1

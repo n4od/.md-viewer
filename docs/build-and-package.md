@@ -1,5 +1,13 @@
 # Build, package and test
 
+This is the Windows path: building the app, packaging the NSIS installer, registering
+the file association and verifying the result. Frontend work, documentation and the
+Rust tests need none of it — see [CONTRIBUTING.md](../CONTRIBUTING.md) for the smaller
+setups, including Linux.
+
+PowerShell commands below are written to be run from the repository root. If your
+machine's execution policy blocks local scripts, prefix them with
+`powershell -ExecutionPolicy Bypass -File` once rather than in every command.
 
 ## Step 0 — Prerequisites (once)
 
@@ -94,21 +102,21 @@ Unattended checks:
 Installing and uninstalling replaces keys shared with the dev registration, and
 the uninstall hook removes WebView2's data folder (`%LOCALAPPDATA%\mdviewer`,
 which holds the theme and recent-files list). Re-run
-`scripts\register-file-association.ps1 -SetDefault` afterwards if you develop
+`scripts/register-file-association.ps1 -SetDefault` afterwards if you develop
 against the portable exe.
 
 ## Step 4 — Register the association for an unpackaged build
 
 ```powershell
 # inspect first — the script never needs admin rights
-powershell -ExecutionPolicy Bypass -File scripts\register-file-association.ps1 `
+.\scripts/register-file-association.ps1 `
     -ExePath .\src-tauri\target\release\mdviewer.exe -SetDefault
 
 # what does the shell actually offer now? (calls SHAssocEnumHandlers)
-powershell -ExecutionPolicy Bypass -File scripts\show-open-with.ps1
+.\scripts/show-open-with.ps1
 
 # undo
-powershell -ExecutionPolicy Bypass -File scripts\unregister-file-association.ps1
+.\scripts/unregister-file-association.ps1
 ```
 
 What it writes (all under `HKCU\Software\Classes`, i.e. current user):
@@ -127,7 +135,7 @@ app appear **named** in the "Open with" list: the list is built from
 `HKCR\Applications\<exe>`, and an entry without a friendly name is drawn blank —
 Windows 11 usually drops those, which is why a ProgId-only registration can look
 like it did nothing. Verify what the shell really offers with
-`scripts\show-open-with.ps1`, which calls the same API the picker does:
+`scripts/show-open-with.ps1`, which calls the same API the picker does:
 
 ```
 Apps the shell offers for '.md' (this is the 'Open with' list):
@@ -169,7 +177,7 @@ when it offers to become your default.
 
 Verify it without clicking: `cargo test -- --ignored
 association_registration_round_trip` writes the real keys and reads them back,
-and `scripts\show-open-with.ps1` prints what the shell would offer.
+and `scripts/show-open-with.ps1` prints what the shell would offer.
 
 ### Windows Sandbox / portable copy
 
@@ -177,7 +185,7 @@ Because registration is now built in, the exe-only workflow works — with the t
 caveats that always apply to a fresh Windows instance:
 
 * Press **Set as default** inside the Sandbox (or run
-  `scripts\register-file-association.ps1 -ExePath <sandbox path>`), then confirm
+  `scripts/register-file-association.ps1 -ExePath <sandbox path>`), then confirm
   once in the dialog. Nothing persists after the Sandbox closes unless you run
   that from a `.wsb` logon command.
 * A clean image may lack the **WebView2 runtime**, which no portable exe can
@@ -190,7 +198,7 @@ caveats that always apply to a fresh Windows instance:
 | :-- | :-- |
 | Association | Double-click `samples\sample.md` in Explorer → the rendered document appears. |
 | In-app default handler | Empty state → **Set as default for .md files** → the Windows "How do you want to open this file?" dialog appears listing MD Viewer; tick *Always use this app*, then the empty-state line switches to "MD Viewer is the default app for .md files." |
-| In-app registration keys | After the button (dialog dismissed or not): `reg query HKCU\Software\Classes\Applications\mdviewer.exe /v FriendlyAppName` and `scripts\show-open-with.ps1` both mention MD Viewer. |
+| In-app registration keys | After the button (dialog dismissed or not): `reg query HKCU\Software\Classes\Applications\mdviewer.exe /v FriendlyAppName` and `scripts/show-open-with.ps1` both mention MD Viewer. |
 | Startup with an argument | `.\mdviewer.exe samples\sample.md` from a terminal. |
 | Startup without one | Launch the exe → the empty state with **Open a Markdown file**. |
 | Single instance | With the viewer open, double-click `samples\sample-notes.md` → the *running* window switches documents (no second window). |
@@ -273,11 +281,11 @@ Two notes for whoever adds a check:
 
 | Symptom | Cause / fix |
 | :-- | :-- |
-| Not listed under *Open with* | The app must have `HKCR\Applications\mdviewer.exe` with `FriendlyAppName`; run `scripts\show-open-with.ps1` to see the picker's own list. If it is listed there but not in Explorer, reopen Explorer (cached menu). |
+| Not listed under *Open with* | The app must have `HKCR\Applications\mdviewer.exe` with `FriendlyAppName`; run `scripts/show-open-with.ps1` to see the picker's own list. If it is listed there but not in Explorer, reopen Explorer (cached menu). |
 | Double-click opens the old handler | Windows keeps a per-user `UserChoice`, which beats every registry default. Use *Open with → Choose another app → MD Viewer → Always*, or right-click a `.md` → *Open with → MD Viewer* for a one-off. |
 | Nothing happens on double-click | Confirm the key exists: `reg query HKCU\Software\Classes\MDViewer.Markdown\shell\open\command`. |
 | `assoc .md` / `ftype` report nothing | Both only read the machine hive; a per-user registration is invisible to them by design. |
 | White flash on start | You launched a debug build from a terminal that was already open, or the watchdog (3 s) showed the window before the first paint. |
 | Images missing | The image lives outside the document's folder — only that folder tree is scoped. |
 | A huge file shows only the beginning | Truncation ceiling is 16 MB; the toast and the header say so. |
-| `npm` blocked by script policy | Use `npm.cmd`/`npx.cmd` or `Set-ExecutionPolicy -Scope Process Bypass`. |
+| Scripts rejected by execution policy | That is a local PowerShell setting, not a project requirement: run `powershell -ExecutionPolicy Bypass -File .\scripts\<name>.ps1`, or `Set-ExecutionPolicy -Scope Process Bypass` in that session. |

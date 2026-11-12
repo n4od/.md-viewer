@@ -115,29 +115,36 @@ missing for smaller reasons, in [docs/limitations.md](docs/limitations.md).
 
 ## Development
 
-```powershell
-cargo test --manifest-path src-tauri/Cargo.toml     # 33 tests, 1 opt-in registry test
-cargo run --manifest-path src-tauri/Cargo.toml -- samples\sample.md
+Most of the project can be worked on without Windows, Rust or the Tauri CLI.
+
+**Frontend and docs** — Node only, and no install step:
+
+```bash
+node scripts/dev-server.js
+# http://127.0.0.1:8123/preview/harness.html   the app, with a fake Tauri bridge
+# http://127.0.0.1:8123/preview/tests.html    68 behavioural checks
 ```
 
-The frontend is three static files and needs no build step. Iterate on it in a plain
-browser:
+**Rust renderer and tests** — any OS with Rust (on Linux this also needs Tauri's system
+packages; see [CONTRIBUTING.md](CONTRIBUTING.md)):
+
+```bash
+cargo test --manifest-path src-tauri/Cargo.toml     # 33 tests, 1 opt-in registry test
+cargo run --manifest-path src-tauri/Cargo.toml -- samples/sample.md
+```
+
+**Windows app and installer** — needs Windows, WebView2 and the Tauri CLI:
 
 ```powershell
-node scripts/dev-server.js
-# http://localhost:8123/preview/harness.html   — the app, with a fake Tauri bridge
-# http://localhost:8123/preview/tests.html     — 68 behavioural checks
+npm install
+npm run bundle
 ```
 
 CI enforces the constraints as well as the tests: a **frontend size budget**
 (`src/` ≤ 112 KB, `app.js` ≤ 66 KB), the front-end suite in a headless browser,
-`cargo fmt --check`, `cargo clippy -- -D warnings` and `cargo test`. Building the
-installer needs Node and the Tauri CLI:
-
-```powershell
-npm.cmd install
-npx.cmd tauri build
-```
+`cargo fmt --check`, `cargo clippy -- -D warnings` and `cargo test` on Windows; on
+Ubuntu it runs `cargo check --all-targets` and `cargo test` so the Rust side stays
+portable.
 
 Full walkthrough, including the file-association registration and the installer checks:
 [docs/build-and-package.md](docs/build-and-package.md).

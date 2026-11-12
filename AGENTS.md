@@ -1,19 +1,23 @@
 # AGENTS.md
 
-Tauri v2 + Rust Markdown viewer. Frontend is three static files; the whole
-backend is one Rust file. Windows is the only exercised target.
+Engineering notes for MD Viewer: a Tauri v2 + Rust Markdown viewer whose frontend is
+three static files and whose backend is one Rust file. Written for coding agents, and
+useful to anyone changing the internals.
 
-## Owner rules (non-negotiable)
+> Machine-specific rules for a particular checkout live in `AGENTS.local.md`, which is
+> gitignored. If that file exists, it takes precedence over anything here. Nothing below
+> depends on one machine: commands are given in their portable form.
 
-- **Never run git write commands without explicit approval.** No `add`, `commit`,
-  `tag`, `push`, `init`, `checkout`, `reset`. Read-only git (`status`, `diff`,
-  `log`) is fine. Commits are the owner's job.
-- **Do not run release or full builds unless asked.** `cargo build --release`,
-  `tauri build`, `npm run bundle` and installer runs take 3–7 minutes. Use
-  `cargo check` (seconds, warm cache) and focused `cargo test` instead. If a
-  release build is genuinely needed, ask first.
-- **No new frontend dependencies, bundlers, or frameworks.** The no-bundler
-  design is deliberate; `package.json` exists only for the Tauri CLI.
+## Project rules (non-negotiable)
+
+- **No new frontend dependencies, bundlers, or frameworks.** The no-bundler design is
+  deliberate; `package.json` exists only for the Tauri CLI. The size budget in CI is what
+  keeps that honest.
+- **Read-only.** The app renders Markdown and never writes the document. Anything that
+  needs an editor belongs in another application.
+- **Windows is the packaged target.** The Rust code is `cfg`-gated for other platforms
+  and CI proves it compiles on Linux, but the installer, the registry association and
+  WebView2 are Windows-only concerns.
 
 ## Commands (from repo root unless noted)
 
@@ -25,18 +29,23 @@ backend is one Rust file. Windows is the only exercised target.
 | One test | `cargo test --manifest-path src-tauri/Cargo.toml open_command -- --nocapture` |
 | UI iteration | `node scripts/dev-server.js` → <http://localhost:8123/preview/harness.html> |
 | Desktop layout | <http://localhost:8123/preview/wide.html> (1280×900 iframe) |
-| Manual doc | `src-tauri\target\release\mdviewer.exe samples\sample.md` (existing binary only) |
+| Manual doc | `src-tauri/target/release/mdviewer.exe samples/sample.md` (existing Windows binary only) |
 
-- Always invoke scripts as `powershell -ExecutionPolicy Bypass -File scripts\...`.
-  `npm.ps1`/`npx.ps1` are blocked by execution policy on this machine — use
-  `npm.cmd` / `npx.cmd`, and note `node_modules` is absent, so `npm run ...`
-  needs `npm install` first.
-- CI lives in `.github/workflows/ci.yml` (windows-latest: a **frontend size budget**
-  — `src/` ≤ 112 KB, `app.js` ≤ 66 KB, raised from 80/46 KB when the 0.2.0 batch
-  reached that ceiling, to 96/56 for tabs and the Phase 4 items, to 108/62 for the
-  settings panel, and to 112/66 for the tab keyboard model and session restore — then
-  **the front-end tests** in a headless browser, then `cargo fmt --check`,
-  `cargo check --all-targets`, `cargo clippy -- -D warnings`, then `cargo test`).
+- The `.ps1` scripts (icons, association, measurement) are Windows-only maintenance
+  tools; contributing does not require them. Run them as
+  `powershell -ExecutionPolicy Bypass -File scripts/<name>.ps1` on a machine whose
+  policy blocks local scripts.
+- `npm install` is needed once for the Tauri CLI (`tauri dev`, `tauri build`). The
+  frontend does not need it: `node scripts/dev-server.js` has no dependencies.
+- CI lives in `.github/workflows/ci.yml` and has two jobs. **windows-latest** is the full
+  gate: a **frontend size budget** — `src/` ≤ 112 KB, `app.js` ≤ 66 KB, raised from
+  80/46 KB when the 0.2.0 batch reached that ceiling, to 96/56 for tabs and the Phase 4
+  items, to 108/62 for the settings panel, and to 112/66 for the tab keyboard model and
+  session restore — then **the front-end tests** in a headless browser, then
+  `cargo fmt --check`, `cargo check --all-targets`, `cargo clippy -- -D warnings`, then
+  `cargo test`. **ubuntu-latest** runs `cargo check --all-targets` and `cargo test` after
+  installing Tauri's Linux prerequisites, which is what keeps the "the Rust side is
+  portable" claim honest; it does not build a package.
   The test step starts `scripts/dev-server.js` itself, tries Edge then Chrome, dumps
   the settled DOM of `/preview/tests.html`, and fails unless the page reports
   `data-result="pass"`;
@@ -166,9 +175,9 @@ backend is one Rust file. Windows is the only exercised target.
   themselves.
 - Both the registration script and the ignored test write **real HKCU keys**:
   `cargo test ... -- --ignored association_registration_round_trip`, then
-  `scripts\unregister-file-association.ps1 -Force`. The test registers the test
+  `scripts/unregister-file-association.ps1 -Force`. The test registers the test
   binary, so re-register the real exe afterwards if the machine should keep the
-  association (`scripts\register-file-association.ps1 -SetDefault`).
+  association (`scripts/register-file-association.ps1 -SetDefault`).
 
 ## Windows installer (NSIS)
 
@@ -182,7 +191,7 @@ backend is one Rust file. Windows is the only exercised target.
   points at the ProgId it deleted. `src-tauri/windows/hooks.nsh` (wired through
   `nsis.installerHooks`) handles all of it. Defines available in hooks:
   `${PRODUCTNAME}`, `${MANUFACTURER}`, `${MAINBINARYNAME}`, `${BUNDLEID}`, `SHCTX`.
-- Build with `npm install` then `npx.cmd tauri build` (or `npm run bundle`);
+- Build with `npm install` then `npx tauri build` (or `npm run bundle`);
   output is `src-tauri/target/release/bundle/nsis/*-setup.exe`. Silent flags:
   `/S`. `currentUser` install dir: `%LOCALAPPDATA%\MD Viewer`.
 - For scripted or headless registration call `mdviewer.exe --register-default`
@@ -194,7 +203,7 @@ backend is one Rust file. Windows is the only exercised target.
   deletes `%LOCALAPPDATA%\mdviewer` (theme, recent files and the remembered window
   geometry — `window.json`, written next to the WebView2 profile). Export the
   HKCU keys first if they matter, and re-run
-  `scripts\register-file-association.ps1 -SetDefault` afterwards.
+  `scripts/register-file-association.ps1 -SetDefault` afterwards.
 - The bundle identifier is `mdviewer` (was `dev.mdviewer.app`, which made the CLI
   warn about a macOS bundle-extension clash). A bare identifier is fine on Windows;
   macOS wants reverse-DNS, so a macOS target would need one of its own.

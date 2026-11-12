@@ -4,7 +4,7 @@
 Reproduce everything below with:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts\measure.ps1      # time + memory
+.\scripts\measure.ps1      # time + memory (Windows PowerShell)
 cargo test --manifest-path src-tauri\Cargo.toml                   # 33 tests, 1 ignored
 cargo test --release rendering_a_large_document_stays_fast -- --nocapture
 ```
@@ -44,7 +44,7 @@ Working set is summed across processes, so shared pages (the same DLLs and font
 data mapped into every Chromium process) are counted several times; private
 bytes are the better proxy for what the app really costs the system. The exact
 numbers from the last run are in [PERFORMANCE.md](PERFORMANCE.md), per process;
-regenerate them with `scripts\measure.ps1 -WriteReport`.
+regenerate them with `scripts/measure.ps1 -WriteReport`.
 
 ## About the `<100 ms` / `<30 MB` targets
 

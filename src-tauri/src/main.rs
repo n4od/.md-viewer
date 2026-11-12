@@ -2788,22 +2788,28 @@ footnote[^1]
         assert_eq!(html.matches("width=\"").count(), 0, "{html}");
     }
 
-    /// The document icon has to survive being embedded in the binary, and the value
-    /// handed to Windows has to be the `"path",0` shape it expects - otherwise every
-    /// `.md` silently falls back to the app tile.
+    /// The document icon has to survive being embedded in the binary, and — on
+    /// Windows — the value handed to the shell has to be the `"path",0` shape it
+    /// expects, otherwise every `.md` silently falls back to the app tile.
     #[test]
     fn the_file_icon_is_embedded_and_installable() {
         assert!(FILE_ICON.len() > 1000, "the document icon looks empty");
-        let value = install_file_icon().expect("write the document icon");
-        assert!(
-            value.starts_with('"') && value.ends_with("\",0"),
-            "value shape: {value}"
-        );
 
-        let file = value.trim_start_matches('"').trim_end_matches("\",0");
-        assert!(file.ends_with("markdown.ico"), "icon path: {file}");
-        let written = std::fs::read(file).expect("the icon is on disk");
-        assert_eq!(written, FILE_ICON, "the icon must round-trip unchanged");
+        // Writing the icon out uses %LOCALAPPDATA% and returns a registry value, so
+        // only this half is Windows-only; the embedded bytes are checked everywhere.
+        #[cfg(windows)]
+        {
+            let value = install_file_icon().expect("write the document icon");
+            assert!(
+                value.starts_with('"') && value.ends_with("\",0"),
+                "value shape: {value}"
+            );
+
+            let file = value.trim_start_matches('"').trim_end_matches("\",0");
+            assert!(file.ends_with("markdown.ico"), "icon path: {file}");
+            let written = std::fs::read(file).expect("the icon is on disk");
+            assert_eq!(written, FILE_ICON, "the icon must round-trip unchanged");
+        }
     }
 
     /// The geometry file outlives a build, so its shape must round-trip: a field
