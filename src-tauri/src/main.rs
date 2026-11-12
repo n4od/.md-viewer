@@ -1788,6 +1788,18 @@ mod shell_default {
     }
 }
 
+/// The OS parent window to attach the picker to. Windows needs the `HWND`; other
+/// platforms have no such dialog, and the stub ignores the value.
+#[cfg(windows)]
+fn parent_window_handle<R: tauri::Runtime>(window: &tauri::WebviewWindow<R>) -> isize {
+    window.hwnd().map(|hwnd| hwnd.0 as isize).unwrap_or(0)
+}
+
+#[cfg(not(windows))]
+fn parent_window_handle<R: tauri::Runtime>(_window: &tauri::WebviewWindow<R>) -> isize {
+    0
+}
+
 /// Register MD Viewer as a candidate handler and hand over to the Windows
 /// picker. Only the user can set a file-type default, so the app registers,
 /// tells the shell, and then shows the dialog where that choice is made.
@@ -1808,8 +1820,7 @@ async fn make_default(app: AppHandle) -> Result<DefaultReport, String> {
             if let Some(path) = target {
                 let parent = handle
                     .get_webview_window("main")
-                    .and_then(|window| window.hwnd().ok())
-                    .map(|hwnd| hwnd.0 as isize)
+                    .map(|window| parent_window_handle(&window))
                     .unwrap_or(0);
                 if !shell_default::show_open_with(parent, &path) {
                     let _ = handle.emit(
