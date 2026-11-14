@@ -1,6 +1,15 @@
 # Deliberate limitations
 
 * **Read-only.** It is a viewer: no editing, no saving, no clipboard-on-edit.
+* **The window has no OS caption.** The toolbar is the title bar, so the things a
+  caption provides are either rebuilt (drag, minimize, maximize/restore, close, the
+  document's name) or gone: the Windows 11 *snap layouts* flyout does not appear when
+  you hover the maximize button, and right-clicking the bar does not open the system
+  menu. Snapping itself is unaffected — `Win`+arrow and dragging the window to a screen
+  edge both work, because the drag is the same `HTCAPTION` drag the caption used, and
+  `Alt`+`Space` still reaches the system menu. Development happens on Windows 10, so
+  Windows 11 niceties around the caption (the flyout, rounded corners) are unverified
+  here rather than known-broken.
 * **Raw HTML is sanitised, not trusted.** `<details>`, `<kbd>`, `<sub>` and
   friends render; `<script>`, inline handlers, `javascript:` URLs and inline
   `style` attributes do not. Intentional; see

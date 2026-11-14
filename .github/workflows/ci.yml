@@ -26,15 +26,18 @@ jobs:
       # way: if a change needs more room, raise the budget deliberately in review.
       # Raised 80/46 -> 88/52 after the 0.2.0 batch, 88/52 -> 96/56 once tabs, the
       # pinned section title and the image lightbox were in, 96/56 -> 108/62 for
-      # the settings panel, and 108/62 -> 112/66 for the tab keyboard model (tablist
-      # semantics, roving focus, Ctrl+Tab/Ctrl+W) and session restore. Still far below
-      # what a bundler or a framework would cost, which is what the ceiling is for.
+      # the settings panel, 108/62 -> 112/66 for the tab keyboard model (tablist
+      # semantics, roving focus, Ctrl+Tab/Ctrl+W) and session restore, and
+      # 112/66 -> 118/70 for the frameless title bar (drag region, the document name
+      # that the strip used to carry, three window buttons and their two glyphs).
+      # Still far below what a bundler or a framework would cost, which is what the
+      # ceiling is for.
       - name: Frontend size budget
         working-directory: .
         shell: pwsh
         run: |
-          $totalBudget = 112KB
-          $jsBudget    = 66KB
+          $totalBudget = 118KB
+          $jsBudget    = 70KB
           $total = (Get-ChildItem src -File | Measure-Object -Property Length -Sum).Sum
           $js    = (Get-Item src/app.js).Length
           'src/ total {0:N1} KB of {1:N0} KB; app.js {2:N1} KB of {3:N0} KB' -f `

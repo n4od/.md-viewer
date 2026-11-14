@@ -17,6 +17,9 @@
     // Same shape Tauri uses on Windows: http://asset.localhost/<encodeURIComponent(path)>
     return "http://asset.localhost/" + encodeURIComponent(p);
   };
+  // The window is frameless, so the window buttons in the toolbar are the only ones
+  // there are. Absent outside Tauri, which is how the preview harness runs.
+  var currentWindow = (T.window && T.window.getCurrentWindow) ? T.window.getCurrentWindow() : null;
   // Hands back to the browser between progressive chunks so the top of a long
   // document paints while the rest is still being built. Injectable because
   // requestAnimationFrame does not fire in an occluded tab, which is how the
@@ -92,6 +95,22 @@
   var $ = function (id) { return document.getElementById(id); };
   var noop = function () {};
 
+  /* The page does not scroll: #main is the only scroll container (see styles.css), so
+   * every read or move of the reading position goes through these rather than the
+   * window. Scrolling it is also what fires the scroll event the rest of the UI
+   * listens for, and scroll events do not bubble, which is why the listener is on the
+   * container itself. */
+  function readingTop() { return $("main").scrollTop; }
+  function readingHeight() { return $("main").clientHeight; }
+  function readingTo(top, smooth) {
+    $("main").scrollTo({ top: top, behavior: smooth ? "smooth" : "instant" });
+  }
+  /* A viewport-relative `getBoundingClientRect().top` as an offset inside the reading
+   * surface, which is what scrolling it takes. */
+  function readingOffset(viewportTop) {
+    return viewportTop - $("main").getBoundingClientRect().top + readingTop();
+  }
+
   function fmtInt(n) {
     try { return new Intl.NumberFormat().format(n); } catch (_) { return String(n); }
   }
@@ -148,6 +167,47 @@
     } catch (_) {
       return false;
     }
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Window chrome
+   * ------------------------------------------------------------------ */
+
+  /* The window has no decorations: the toolbar is also its title bar (dragging is
+   * handled by Tauri's own `data-tauri-drag-region` script, including double-click to
+   * maximize), and these three buttons are the only window controls. Every call is
+   * guarded because the window API does not exist outside Tauri — there the buttons
+   * are inert rather than broken. */
+  function initWindowControls() {
+    var bar = $("topbar");
+    var min = $("win-min");
+    var max = $("win-max");
+    var close = $("win-close");
+
+    if (!currentWindow) {
+      [min, max, close].forEach(function (button) { button.disabled = true; });
+      return;
+    }
+
+    /* Maximizing is also reachable from the keyboard (Win+Up) and by double-clicking
+     * the bar, so the glyph is driven by the window's own state rather than by whoever
+     * clicked last. */
+    function syncMaximize() {
+      if (!currentWindow.isMaximized) return;
+      currentWindow.isMaximized().then(function (isMaximized) {
+        bar.classList.toggle("is-maximized", !!isMaximized);
+        var label = isMaximized ? "Restore window" : "Maximize window";
+        max.setAttribute("aria-label", label);
+        max.title = isMaximized ? "Restore" : "Maximize";
+      }).catch(noop);
+    }
+
+    min.addEventListener("click", function () { currentWindow.minimize().catch(noop); });
+    max.addEventListener("click", function () { currentWindow.toggleMaximize().catch(noop); });
+    close.addEventListener("click", function () { currentWindow.close().catch(noop); });
+
+    if (currentWindow.onResized) currentWindow.onResized(syncMaximize).catch(noop);
+    syncMaximize();
   }
 
   /* ------------------------------------------------------------------ *
@@ -309,6 +369,19 @@
 
       document.body.classList.toggle("has-tabs", multiple);
       strip.hidden = !multiple;
+
+      // With no caption above, a lone document has nowhere else to be named: the strip
+      // is the only other label and it is gone at one tab.
+      var activeTab = null;
+      for (var n = 0; n < tabs.length; n++) {
+        if (tabs[n].path === activePath) { activeTab = tabs[n]; break; }
+      }
+      var title = $("win-title");
+      var showTitle = !multiple && !!activeTab;
+      title.hidden = !showTitle;
+      title.textContent = showTitle ? activeTab.name : "";
+      title.title = showTitle ? activeTab.path : "";
+
       strip.textContent = "";
       if (!multiple) {
         // The strip just disappeared under the focus ring; hand focus back to the
@@ -599,7 +672,7 @@
         return;
       }
 
-      var previousScroll = options.preserveScroll ? window.scrollY : 0;
+      var previousScroll = options.preserveScroll ? readingTop() : 0;
       var sameFile = current && current.path === doc.path;
 
       current = doc;
@@ -649,16 +722,16 @@
 
       if (sameFile && options.preserveScroll) {
         // A live reload of the document already on screen: keep reading position.
-        window.scrollTo({ top: previousScroll, behavior: "instant" });
+        readingTo(previousScroll, false);
       } else if (sameFile) {
         // Explicitly re-opened the same file: start at the top.
-        window.scrollTo({ top: 0, behavior: "instant" });
+        readingTo(0, false);
       } else {
         // A different document: resume where it was left. Images may still be
         // loading, so the browser clamps this to the height that exists yet.
         var stored = resumeEnabled() ? readPositions()[doc.path] : null;
         var target = typeof stored === "number" ? stored : 0;
-        window.scrollTo({ top: target, behavior: "instant" });
+        readingTo(target, false);
         if (target > 200) {
           setTimeout(function () {
             toast("Resumed where you left off — Home jumps to the top");
@@ -858,8 +931,8 @@
     function scrollToId(id) {
       var el = document.getElementById(id);
       if (!el) return;
-      var top = el.getBoundingClientRect().top + window.scrollY - (48 + 18);
-      window.scrollTo({ top: top, behavior: "smooth" });
+      var top = readingOffset(el.getBoundingClientRect().top) - 18;
+      readingTo(top, true);
     }
 
     /* Only the webview's own title: the window title bar names the document, and a tab
@@ -897,7 +970,7 @@
     function writePosition() {
       if (!current || !current.path || !resumeEnabled()) return;
       var map = readPositions();
-      map[current.path] = Math.round(window.scrollY);
+      map[current.path] = Math.round(readingTop());
       var keys = Object.keys(map);
       if (keys.length > 60) {
         keys.slice(0, keys.length - 60).forEach(function (key) { delete map[key]; });
@@ -936,8 +1009,8 @@
     }
 
     function updateProgress() {
-      var height = document.documentElement.scrollHeight - window.innerHeight;
-      var ratio = height > 40 ? Math.min(1, Math.max(0, window.scrollY / height)) : 0;
+      var height = $("main").scrollHeight - readingHeight();
+      var ratio = height > 40 ? Math.min(1, Math.max(0, readingTop() / height)) : 0;
       progress.style.width = (ratio * 100).toFixed(2) + "%";
       progress.style.opacity = ratio > 0 ? "1" : "0";
     }
@@ -971,7 +1044,7 @@
         setActiveHeadings([]);
         return;
       }
-      var threshold = window.scrollY + 48 + 40;
+      var threshold = readingTop() + 40;
       var index = headingIndexAt(threshold);
       var picked = index >= 0 ? headings[index] : headings[0];
       if (picked && picked.id !== activeId) setActiveHeadings([picked.id]);
@@ -1015,7 +1088,9 @@
       );
     }
 
-    window.addEventListener(
+    // Scroll events do not bubble and the reading surface is the scroller now, so this
+    // listens on the container itself rather than on the window.
+    $("main").addEventListener(
       "scroll",
       function () {
         updateSticky();
@@ -1273,8 +1348,8 @@
         }
         count.textContent = (index + 1) + "/" + total;
         var rect = range.getBoundingClientRect();
-        var target = rect.top + window.scrollY - window.innerHeight / 2;
-        window.scrollTo({ top: target, behavior: "smooth" });
+        var target = readingOffset(rect.top) - readingHeight() / 2;
+        readingTo(target, true);
       }
 
       function open() {
@@ -1601,8 +1676,8 @@
         var key = event.key.toLowerCase();
         if (key === "j" || key === "k") {
           event.preventDefault();
-          window.scrollBy({
-            top: (key === "j" ? 1 : -1) * Math.round(window.innerHeight * 0.42),
+          $("main").scrollBy({
+            top: (key === "j" ? 1 : -1) * Math.round(readingHeight() * 0.42),
             behavior: "smooth"
           });
         }
@@ -1742,6 +1817,7 @@
     pruneRecent();
     subscribe();
     refreshDefaultStatus();
+    initWindowControls();
 
     invoke("initial_document")
       .then(function (doc) {

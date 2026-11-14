@@ -25,7 +25,7 @@ useful to anyone changing the internals.
 | :-- | :-- |
 | Fast compile gate | `cargo check --manifest-path src-tauri/Cargo.toml` |
 | All tests | `cargo test --manifest-path src-tauri/Cargo.toml` (33 pass, 1 ignored) |
-| Front-end tests | `node scripts/dev-server.js` → <http://localhost:8123/preview/tests.html> (76 checks, `RESULT: PASS`) |
+| Front-end tests | `node scripts/dev-server.js` → <http://localhost:8123/preview/tests.html> (91 checks, `RESULT: PASS`) |
 | One test | `cargo test --manifest-path src-tauri/Cargo.toml open_command -- --nocapture` |
 | UI iteration | `node scripts/dev-server.js` → <http://localhost:8123/preview/harness.html> |
 | Desktop layout | <http://localhost:8123/preview/wide.html> (1280×900 iframe) |
@@ -38,10 +38,11 @@ useful to anyone changing the internals.
 - `npm install` is needed once for the Tauri CLI (`tauri dev`, `tauri build`). The
   frontend does not need it: `node scripts/dev-server.js` has no dependencies.
 - CI lives in `.github/workflows/ci.yml` and has two jobs. **windows-latest** is the full
-  gate: a **frontend size budget** — `src/` ≤ 112 KB, `app.js` ≤ 66 KB, raised from
+  gate: a **frontend size budget** — `src/` ≤ 118 KB, `app.js` ≤ 70 KB, raised from
   80/46 KB when the 0.2.0 batch reached that ceiling, to 96/56 for tabs and the Phase 4
-  items, to 108/62 for the settings panel, and to 112/66 for the tab keyboard model and
-  session restore — then **the front-end tests** in a headless browser, then
+  items, to 108/62 for the settings panel, to 112/66 for the tab keyboard model and
+  session restore, and to 118/70 for the frameless title bar — then **the front-end
+  tests** in a headless browser, then
   `cargo fmt --check`, `cargo check --all-targets`, `cargo clippy -- -D warnings`, then
   `cargo test`. **ubuntu-latest** installs Tauri's Linux prerequisites, then runs the
   **front-end suite** in headless Chromium, `cargo check --all-targets` and `cargo test`,
@@ -93,9 +94,13 @@ useful to anyone changing the internals.
   only writer of `Viewer.current`, and switching a tab is just `load_path`, which
   re-points the watcher, the asset scope and the window title for free. The strip lives
   **inside the toolbar row** (`#topbar`), hidden unless two documents are open: one band
-  of chrome, and `--tabs-h` no longer exists, so nothing docks below the toolbar and the
-  offsets that used to add it (headings' scroll margin, the drawer, the pinned bar) key
-  off `--topbar-h` alone. A tab is a wrapper holding two sibling buttons, because a
+  of chrome, and `--tabs-h` no longer exists, so nothing docks below the toolbar. The
+  offsets that used to add it key off the scroll container instead: headings'
+  `scroll-margin-top` is `calc(var(--sticky-h) + 18px)`, because `#main` is the scroller
+  and starts below the toolbar. Because the window is frameless that row is also the title
+  bar, so the name the strip carries at two documents is carried by `.win-title` at
+  one — `renderTabs()` sets both, and `title.hidden = multiple` is the switch. A tab is
+  a wrapper holding two sibling buttons, because a
   button may not contain another button. The strip is a
   `role="tablist"` (a `div`, not a `<nav>`: the role replaces the landmark), each tab
   button is a `role="tab"` with `aria-selected` and a roving `tabindex`, and the
@@ -130,6 +135,32 @@ useful to anyone changing the internals.
   `ready` command (3 s watchdog). Don't set `visible: true` — that reintroduces
   the white flash. The startup file is read and rendered in `setup()` before the
   webview paints and handed over via `initial_document`.
+- **The window is frameless** (`decorations: false`, `shadow: true`), so `#topbar` is
+  the title bar: `data-tauri-drag-region="deep"` makes the band draggable and
+  double-clicking it maximizes, both handled by Tauri's own script — which already
+  refuses to drag from anything clickable (`button`, `a`, `[tabindex]`, `role="tab"`),
+  which is why the tabs and the buttons need no opt-out. Tauri does not strip the frame
+  styles to make the window frameless — the live window still reports both `WS_CAPTION`
+  and `WS_THICKFRAME` (covered, not removed) — and that is what keeps edge resizing, the
+  DWM shadow and snapping working; `tauri-runtime-wry`'s `undecorated_resizing` subclass
+  hit-tests the edges itself. `drag_window()` sends `WM_NCLBUTTONDOWN(HTCAPTION)`, which
+  is the native drag, so drag-to-edge snapping still works; the Windows 11 snap-layouts
+  *flyout* is the one thing lost, as it is drawn by the OS around the caption button we no
+  longer have.
+  `src-tauri/capabilities/default.json` grants exactly four extra window permissions
+  (`start-dragging`, `minimize`, `toggle-maximize`, `close`) — `is-maximized` and
+  `internal-toggle-maximize` are already in `core:window:default`. The webview can still
+  do nothing else; keep it that way rather than adding `core:window:default` wholesale.
+- **The page does not scroll; `#main` does.** `html`/`body` are a fixed-height flex column
+  and `#main` is the only scroll container. That is what puts the scrollbar below the
+  toolbar instead of beside it, and what lets the toolbar span the full window width — so
+  the window buttons sit flush against the window edge. Three consequences: the scroll
+  listener is on `#main` (scroll events do not bubble), `headingTops` reads `offsetTop`
+  relative to `#main` (which is positioned, so it *is* the `offsetParent`), and every read
+  or move of the reading position goes through `readingTop()`/`readingHeight()`/`readingTo()`/
+  `readingOffset()` in `app.js` — never `window.scrollY`, which no longer means anything.
+  The pinned bar stays a `position: fixed` overlay below the toolbar (out of flow, so it
+  never shifts the text), and the settings dialog's scroll lock is `html.modal-open #main`.
 - Drag & drop arrives as `tauri::WebviewEvent::DragDrop`, **not** `WindowEvent`.
 - Asset protocol scope in `tauri.conf.json` is intentionally empty; Rust grants
   the open document's folder at runtime. Don't widen it in config.

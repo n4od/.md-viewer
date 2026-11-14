@@ -13,9 +13,15 @@
   <a id="skip-link" class="skip-link" href="#doc">Skip to content</a>
   <div id="progress" aria-hidden="true"></div>
 
-  <header id="topbar">
-    <!-- The tab strip lives in the toolbar row: one band of chrome, and the tab
-         already names the document, so the toolbar carries no title of its own. -->
+  <header id="topbar" data-tauri-drag-region="deep">
+    <!-- The window is frameless, so this one row is also its title bar: `deep` makes
+         the whole band draggable, and Tauri's own handler already refuses to drag from
+         anything clickable (buttons, links, a role=tab), which is why the strip and the
+         buttons below need no opt-out of their own. Double-clicking the band maximizes. -->
+    <span id="win-title" class="win-title" hidden></span>
+
+    <!-- The strip takes the band over once a second document is open, and then it is
+         what names the document. -->
     <div id="tabs" class="tabs" role="tablist" aria-label="Open documents" hidden></div>
 
     <div class="bar-right">
@@ -24,6 +30,20 @@
       </button>
       <button id="btn-settings" class="icon-btn" type="button" title="Settings" aria-label="Settings" aria-haspopup="dialog">
         <svg viewBox="0 0 24 24" aria-hidden="true" class="gear"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96a7.03 7.03 0 0 0-1.62-.94l-.36-2.54a.48.48 0 0 0-.48-.41h-3.84a.48.48 0 0 0-.48.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.48.48 0 0 0-.59.22L2.74 8.87a.48.48 0 0 0 .12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.37 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.48-.41l.36-2.54c.59-.24 1.13-.57 1.62-.94l2.39.96c.22.07.47 0 .59-.22l1.92-3.32a.48.48 0 0 0-.12-.61l-2.03-1.58zM12 15.6A3.6 3.6 0 1 1 12 8.4a3.6 3.6 0 0 1 0 7.2z"/></svg>
+      </button>
+    </div>
+
+    <!-- The only window controls there are: the row above them is the title bar. -->
+    <div class="win-controls" role="group" aria-label="Window">
+      <button id="win-min" class="win-btn" type="button" title="Minimize" aria-label="Minimize window">
+        <svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1 5h8"/></svg>
+      </button>
+      <button id="win-max" class="win-btn" type="button" title="Maximize" aria-label="Maximize window">
+        <svg viewBox="0 0 10 10" aria-hidden="true" class="glyph-max"><path d="M1.5 1.5h7v7h-7z"/></svg>
+        <svg viewBox="0 0 10 10" aria-hidden="true" class="glyph-restore"><path d="M3.5 1.5h5v5M1.5 4.5h5v4h-5z"/></svg>
+      </button>
+      <button id="win-close" class="win-btn close" type="button" title="Close" aria-label="Close window">
+        <svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1.5 1.5l7 7M8.5 1.5l-7 7"/></svg>
       </button>
     </div>
   </header>

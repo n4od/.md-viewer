@@ -10,9 +10,9 @@
 Windows Explorer and it opens, rendered — no browser, no editor chrome, no white
 flash before the text appears.
 
-![MD Viewer with three documents open as tabs, showing a table and syntax-highlighted Rust, JavaScript and HTML](docs/images/app-light.png)
+![MD Viewer with two documents open as tabs in the title bar, showing a task list and a table with aligned columns](docs/images/app-light.png)
 
-<p align="center"><em>Three documents open as tabs; code is highlighted in Rust before it reaches the webview.</em></p>
+<p align="center"><em>Two documents open as tabs in the title bar — the window has no caption, so the toolbar is it — with the reading surface running edge to edge.</em></p>
 
 ## Install
 
@@ -57,7 +57,7 @@ association and exits with 0 or 1, with no UI. Maintenance scripts live in
   position, session restore, find defaults and remembered window geometry, all in one
   settings dialog.
 
-![MD Viewer in dark theme, showing a table with aligned columns and highlighted code blocks](docs/images/app-dark.png)
+![MD Viewer in dark theme, with the document name in the title bar](docs/images/app-dark.png)
 
 ## Keyboard
 
@@ -122,7 +122,7 @@ Most of the project can be worked on without Windows, Rust or the Tauri CLI.
 ```bash
 node scripts/dev-server.js
 # http://127.0.0.1:8123/preview/harness.html   the app, with a fake Tauri bridge
-# http://127.0.0.1:8123/preview/tests.html    76 behavioural checks
+# http://127.0.0.1:8123/preview/tests.html    91 behavioural checks
 ```
 
 **Rust renderer and tests** — any OS with Rust (on Linux this also needs Tauri's system
@@ -141,7 +141,7 @@ npm run bundle
 ```
 
 CI enforces the constraints as well as the tests: a **frontend size budget**
-(`src/` ≤ 112 KB, `app.js` ≤ 66 KB), the front-end suite in a headless browser,
+(`src/` ≤ 118 KB, `app.js` ≤ 70 KB), the front-end suite in a headless browser,
 `cargo fmt --check`, `cargo clippy -- -D warnings` and `cargo test` on Windows; on
 Ubuntu the same front-end suite runs in headless Chromium alongside
 `cargo check --all-targets` and `cargo test`, so neither the browser suite nor the Rust

@@ -10,6 +10,22 @@ Changes land under `[Unreleased]` first, in whichever of *Added*, *Changed*,
 
 ## [Unreleased]
 
+### Changed
+
+- **The window is frameless.** The OS title bar is gone and the toolbar row is the title
+  bar: it draws its own minimize, maximize/restore and close buttons, drags the window
+  when you drag it, and maximizes on a double-click. The document's name moves into that
+  row — the tab strip still takes over once a second document is open — so there is one
+  48px band of chrome instead of a caption stacked on a toolbar, and about 30px more text
+  on screen. Snapping (`Win`+arrow, drag to a screen edge) and edge-resizing are
+  unchanged, because the drag is still the native caption drag; the Windows 11
+  snap-layouts flyout on hover is the one thing a custom caption cannot reproduce.
+- **The reading surface scrolls, not the page.** The scrollbar now starts below the
+  toolbar instead of running the full height of the window beside it, and the toolbar
+  spans the full width, so the window buttons sit flush against the window edge. The
+  reading position, the pinned section bar, the progress bar, find-scroll and `J`/`K` all
+  work as before; only the surface they measure has changed.
+
 ## [0.5.0] - 2026-11-12
 
 ### Added

@@ -148,14 +148,14 @@ var stopWatchdog = function () {};
   /* The bar would be a duplicate while you can still see the heading it names. */
   ok("pinned title stays out of the way while its heading is on screen", !bar.classList.contains("on"), "display " + win.getComputedStyle(bar).display);
 
-  win.scrollTo(0, 1200);
-  win.dispatchEvent(new win.Event("scroll"));
+  q("#main").scrollTop = 1200;
+  q("#main").dispatchEvent(new win.Event("scroll"));
   await tick();
-  ok("pinned title appears once the heading scrolls under", bar.classList.contains("on"), "scrollY " + win.scrollY);
+  ok("pinned title appears once the heading scrolls under", bar.classList.contains("on"), "scrollTop " + q("#main").scrollTop);
   ok("pinned title has text", bar.textContent.trim().length > 0, JSON.stringify(bar.textContent));
 
-  win.scrollTo(0, 0);
-  win.dispatchEvent(new win.Event("scroll"));
+  q("#main").scrollTop = 0;
+  q("#main").dispatchEvent(new win.Event("scroll"));
   await tick();
   ok("and it retreats again at the top", !bar.classList.contains("on"));
 
@@ -250,6 +250,62 @@ var stopWatchdog = function () {};
   is("a single tab is not persisted", win.localStorage.getItem("mdviewer.tabs"), null);
   ok("the neighbour is on screen", q("#doc h1"));
 
+  /* ---------- frameless window: title bar and window controls ---------- */
+  mark("window controls");
+  const winBar = topbar;
+  const winTitle = q("#win-title");
+
+  ok("the toolbar is the drag region", winBar.getAttribute("data-tauri-drag-region") === "deep",
+     String(winBar.getAttribute("data-tauri-drag-region")));
+  ok("a lone document is named in the bar", !winTitle.hidden && winTitle.textContent === "sample.md",
+     "hidden=" + winTitle.hidden + " text=" + JSON.stringify(winTitle.textContent));
+  is("the name keeps the document's path as a tooltip", winTitle.title, win.__previewPayload.path);
+  // Tauri's drag script refuses to drag from anything clickable, so the controls have to
+  // be buttons for the band behind them to stay draggable.
+  ok("the window controls are buttons", ["win-min", "win-max", "win-close"].every(function (id) {
+    return q("#" + id).tagName === "BUTTON";
+  }));
+
+  win.__windowCalls.length = 0;
+  q("#win-min").click();
+  await tick();
+  is("minimize reaches the window", win.__windowCalls, ["minimize"]);
+
+  q("#win-max").click();
+  await tick(); await tick();
+  is("maximize reaches the window", win.__windowCalls, ["minimize", "toggleMaximize"]);
+  ok("the bar records the maximized state", winBar.classList.contains("is-maximized"));
+  is("the button then offers to restore", q("#win-max").getAttribute("aria-label"), "Restore window");
+
+  q("#win-max").click();
+  await tick(); await tick();
+  ok("the state clears when it is restored", !winBar.classList.contains("is-maximized"));
+  is("the button offers to maximize again", q("#win-max").getAttribute("aria-label"), "Maximize window");
+
+  q("#win-close").click();
+  await tick();
+  is("close reaches the window", win.__windowCalls, ["minimize", "toggleMaximize", "toggleMaximize", "close"]);
+
+  // Maximizing is also reachable from the keyboard and from a double-click on the bar, so
+  // the glyph follows the window's state rather than whichever button was pressed.
+  win.__setMaximized(true);
+  await tick(); await tick();
+  ok("maximizing elsewhere still moves the glyph", winBar.classList.contains("is-maximized"));
+  win.__setMaximized(false);
+  await tick(); await tick();
+  ok("restoring elsewhere clears it again", !winBar.classList.contains("is-maximized"));
+
+  // A second document hands the naming over to the strip.
+  emit({ path: "C:/notes/third.md", name: "third.md", html: '<h1 id="t">Third</h1><p>three</p>' });
+  await tick();
+  ok("the strip replaces the lone name", winTitle.hidden && !strip.hidden);
+
+  // Back to a single document, which is what the sections below expect.
+  qa("#tabs .tab-close").pop().click();
+  await tick(); await tick();
+  ok("closing back down renames the bar", !winTitle.hidden && winTitle.textContent === "sample.md",
+     "hidden=" + winTitle.hidden + " text=" + JSON.stringify(winTitle.textContent));
+
   /* ---------- settings ---------- */
   mark("settings");
   const panel = doc.getElementById("settings");
@@ -257,7 +313,7 @@ var stopWatchdog = function () {};
   gear.click();
   await tick();
   ok("the gear opens a modal settings dialog", panel.open && panel.matches(":modal"));
-  is("the page behind is locked", win.getComputedStyle(doc.documentElement).overflow, "hidden");
+  is("the page behind is locked", win.getComputedStyle(q("#main")).overflowY, "hidden");
 
   panel.querySelector('button[data-theme="light"]').click();
   await tick();
@@ -293,7 +349,7 @@ var stopWatchdog = function () {};
   // close() fires its event as a task, which is where the scroll lock is released.
   await closed;
   await tick();
-  is("the scroll lock is released", win.getComputedStyle(doc.documentElement).overflow, "visible");
+  is("the scroll lock is released", win.getComputedStyle(q("#main")).overflowY, "auto");
 
   /* ---------- per-document reading position ---------- */
   mark("reading position");
@@ -302,7 +358,7 @@ var stopWatchdog = function () {};
   win.localStorage.setItem("mdviewer.positions", JSON.stringify({ "C:/notes/tall.md": 400 }));
   emit({ path: "C:/notes/tall.md", name: "tall.md", html: tall });
   await tick(); await tick();
-  ok("a stored reading position is restored", Math.abs(win.scrollY - 400) <= 2, "scrollY " + win.scrollY);
+  ok("a stored reading position is restored", Math.abs(q("#main").scrollTop - 400) <= 2, "scrollTop " + q("#main").scrollTop);
 
   /* ---------- progressive rendering ---------- */
   mark("progressive rendering");

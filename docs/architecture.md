@@ -29,7 +29,7 @@ described separately because the boundary between them is the whole design.
 │  └─ dev-server.js                 tiny static server for the preview harness
 ├─ preview/
 │  ├─ harness.html                  index.html + a fake Tauri bridge, for CSS work
-│  ├─ tests.html                    76 behavioural checks, run in a real browser
+│  ├─ tests.html                    91 behavioural checks, run in a real browser
 │  └─ wide.html                     1280x900 iframe shell for desktop layout checks
 ├─ docs/
 │  ├─ architecture.md               this file
@@ -200,6 +200,26 @@ Flow of a document:
 5. `invoke("ready")` reveals the window.
 
 Extras implemented in plain JS:
+
+* **The window is frameless, so the toolbar is the title bar.** `decorations` is off in
+  `tauri.conf.json`, and the 48px `#topbar` carries everything a caption would: the band
+  is a drag region (`data-tauri-drag-region="deep"`, which also gives double-click to
+  maximize), the document name appears at its left as `.win-title` whenever the tab
+  strip is hidden, and three window buttons sit at its right edge. Tauri's drag handler
+  ignores clicks on anything clickable, so the tabs and buttons need no marker of their
+  own; the buttons call `getCurrentWindow()` from `@tauri-apps/api`, which arrives as
+  `window.__TAURI__.window` and is absent in a browser, where they go inert instead of
+  throwing. The maximize glyph follows the *window's* state (`isMaximized()` plus the
+  resize event) rather than whichever control was clicked, so `Win+↑` and a double-click
+  on the band keep it honest.
+
+* **The reading surface is the scroll container.** The page itself never scrolls: `html`
+  and `body` are a fixed-height flex column and `#main` scrolls, with the pinned section
+  bar a fixed overlay just below the toolbar. That is what puts the scrollbar below the
+  toolbar and lets the toolbar — the window's title bar — span the full width, with the
+  window buttons flush against the window edge. Everything that reads or moves the reading
+  position goes through the `readingTop()`/`readingTo()` helpers, because scroll events
+  fire on `#main` rather than on the window.
 
 * **Preview harness.** `src/index.html`, `styles.css` and `app.js` also run in a
   plain Chromium browser: `node scripts/dev-server.js`, then open

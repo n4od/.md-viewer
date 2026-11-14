@@ -1,7 +1,13 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Permissions for the main viewer window. Rendering happens in Rust; the webview may only invoke this app's commands and listen for events.",
+  "description": "Permissions for the main viewer window. Rendering happens in Rust; the webview may invoke this app's commands, listen for events, and drive its own frameless window (drag the bar, and the three window buttons).",
   "windows": ["main"],
-  "permissions": ["core:default"]
+  "permissions": [
+    "core:default",
+    "core:window:allow-start-dragging",
+    "core:window:allow-minimize",
+    "core:window:allow-toggle-maximize",
+    "core:window:allow-close"
+  ]
 }
