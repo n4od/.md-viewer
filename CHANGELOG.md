@@ -10,6 +10,8 @@ Changes land under `[Unreleased]` first, in whichever of *Added*, *Changed*,
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-11-14
+
 ### Changed
 
 - **The window is frameless.** The OS title bar is gone and the toolbar row is the title
